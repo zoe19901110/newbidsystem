@@ -180,7 +180,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, onEnterWorkbench, c
         {/* Utility Cards */}
         {[
           { label: 'AI编标', icon: BrainCircuit, color: 'text-blue-500', bg: 'bg-blue-50/80', hover: 'group-hover:bg-blue-100 group-hover:text-blue-600', href: 'https://bqpoint.com/AIbianbiao/dist/index.html' },
-          { label: '标证通', icon: ShieldCheck, color: 'text-emerald-500', bg: 'bg-emerald-50/80', hover: 'group-hover:bg-emerald-100 group-hover:text-emerald-600', href: 'https://epbzt.bqpoint.com/' },
+          { label: '清标工具', icon: ShieldCheck, color: 'text-emerald-500', bg: 'bg-emerald-50/80', hover: 'group-hover:bg-emerald-100 group-hover:text-emerald-600', href: 'https://www.bqpoint.com/tool/qingbiaotooldownloadindex.html' },
           { label: '素材市场', icon: Archive, color: 'text-orange-500', bg: 'bg-orange-50/80', hover: 'group-hover:bg-orange-100 group-hover:text-orange-600', href: 'https://www.bqpoint.com/materialmarket/vue/dist/index.html?platform=DesktopApp#/application-center-home' },
           { label: '招标文件解析', icon: FileSearch, color: 'text-purple-500', bg: 'bg-purple-50/80', hover: 'group-hover:bg-purple-100 group-hover:text-purple-600', href: 'https://www.bqpoint.com/bqdesktop/fileanalysis/before_analysis.html?prefectureguid=0325df6d-b4c9-4a60-b35e-096659ba3a3c&platformquyu=320000&platformcode=tool320000022&applicationguid=34d5ebfb-25e6-4d1b-9abc-d3f00b7f6ce6&danweiguid=undefined&winformtype=jsob&prefectureno=tool320000022&redirect_token=MGU4MjU4M2UtODk1ZS00YzU5LWE4MmEtNmFmMDA1OTM1OGM2&p=prefecturetool' },
           { label: '交易智库', icon: Bell, color: 'text-indigo-500', bg: 'bg-indigo-50/80', hover: 'group-hover:bg-indigo-100 group-hover:text-indigo-600', href: 'https://ai.ebpu.com/' },
