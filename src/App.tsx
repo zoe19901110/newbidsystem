@@ -240,9 +240,7 @@ export default function App() {
               </motion.div>
             </AnimatePresence>
           </div>
-          <footer className="mt-12 py-8 text-center text-slate-400 text-xs border-t border-slate-200">
-            <p>© 2026 招标管理智能分析系统 - 数字化招采效能提升系统</p>
-          </footer>
+
         </main>
       </div>
     </div>
