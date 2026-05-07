@@ -3507,7 +3507,7 @@ const PreparationPhase = ({
   const [showParsingPage, setShowParsingPage] = useState(false);
   const [clarificationRounds, setClarificationRounds] = useState<number>(0);
   
-  const [quota, setQuota] = useLocalStorage('parsing-quota', { total: 100, remaining: 100 });
+  const [quota, setQuota] = useLocalStorage('parsing-quota-v2', { total: 100, remaining: 100 });
   
   const [parsingHistory] = useState([
     { name: '克东县 2021 年老旧小区改造项目招标文件.pdf', date: '2026-03-15', status: '完成' },
@@ -3515,31 +3515,43 @@ const PreparationPhase = ({
   ]);
 
   const handleImmediateParsing = () => {
-    if (quota.remaining <= 0) {
-      alert('您的解析次数已用完，请联系管理员增加额度');
+    console.log('Immediate parsing button clicked');
+    
+    // 1. Check for tender doc first
+    // We check BOTH the dynamic uploadedFiles state AND the manual isTenderUploaded flag
+    const hasTenderDoc = uploadedFiles?.['tender-doc'] === true || isTenderUploaded;
+    
+    if (!hasTenderDoc) {
+      alert('请先上传招标文件后再进行解析');
       return;
     }
 
-    const startParsing = () => {
+    // 2. Check for clarification docs (only within active clarification rounds)
+    // We only consider it "uploaded" if the round is actually created (index < clarificationRounds)
+    const clarDocsArr = Object.keys(uploadedFiles || {}).filter(k => {
+      if (!k.startsWith('clar-doc-') || !uploadedFiles[k]) return false;
+      const index = parseInt(k.replace('clar-doc-', ''));
+      return index < clarificationRounds;
+    });
+    
+    const startParsingAction = () => {
+      if (quota.remaining <= 0) {
+        alert('您的解析次数已用完，请联系管理员增加额度');
+        return;
+      }
       setQuota(prev => ({ ...prev, remaining: Math.max(0, prev.remaining - 1) }));
       handleStartAnalysis();
     };
 
-    // Correctly detect clarification files (keys starting with clar-doc-)
-    const clarDocsArr = Object.keys(uploadedFiles || {}).filter(k => k.startsWith('clar-doc-') && uploadedFiles[k]);
-    
-    // Also check for tender-doc explicitly
-    const hasTenderDoc = uploadedFiles?.['tender-doc'] || isTenderUploaded;
-
     if (clarDocsArr.length > 0) {
+      // If clarification docs exist, ask for confirmation
       setConfirmDialog({
         message: '检测到当前上传了答疑文件，是否用最新的答疑文件开始解析？',
-        onConfirm: startParsing
+        onConfirm: startParsingAction
       });
-    } else if (hasTenderDoc) {
-      startParsing();
     } else {
-      alert('请先上传招标文件后再进行解析');
+      // If no clarification docs, start directly without prompt
+      startParsingAction();
     }
   };
 
@@ -3630,7 +3642,10 @@ const PreparationPhase = ({
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-black text-slate-900">解析报告</h2>
             <button 
-              onClick={() => setIsAnalyzing(false)}
+              onClick={() => {
+                setShowResultPage(false);
+                setShowQualificationResult(false);
+              }}
               className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
             >
               <ArrowLeft size={16} />

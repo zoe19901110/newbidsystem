@@ -443,7 +443,7 @@ const PersonalCenter: React.FC<PersonalCenterProps> = ({ currentEnterprise, init
             }`}
           >
             <Lock size={18} />
-            改密码需验证
+            修改密码
           </button>
           <button 
             onClick={() => setActiveSection('notifications')}
@@ -471,7 +471,7 @@ const PersonalCenter: React.FC<PersonalCenterProps> = ({ currentEnterprise, init
               <div className="mb-8">
                 <h3 className="text-xl font-bold text-slate-900">
                   {activeSection === 'profile' ? '个人资料' : 
-                   activeSection === 'password' ? '改密码前需短信验证' : '消息提醒设置'}
+                   activeSection === 'password' ? '修改密码' : '消息提醒设置'}
                 </h3>
                 <p className="text-sm text-slate-500 mt-1 font-medium">
                   {activeSection === 'profile' 
