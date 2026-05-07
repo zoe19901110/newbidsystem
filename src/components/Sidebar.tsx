@@ -127,7 +127,22 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, currentEnter
               {item.children ? (
                 <>
                   <button
-                    onClick={() => toggleSection(item.id)}
+                    onClick={() => {
+                      const isOpen = openSections.includes(item.id);
+                      toggleSection(item.id);
+                      
+                      // Only select first child if we are OPENING the section
+                      if (!isOpen && item.children && item.children.length > 0) {
+                        const firstChild = item.children[0];
+                        if (firstChild.id === 'inspection') {
+                          window.open('https://biaoshujiancha.graybruce.cn', '_blank');
+                        } else if (firstChild.id === 'ai-prep') {
+                          window.open('https://bqpoint.com/AIbianbiao/dist/index.html', '_blank');
+                        } else {
+                          setActiveTab(firstChild.id);
+                        }
+                      }
+                    }}
                     className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${
                       openSections.includes(item.id) || item.children.some(c => c.id === activeTab)
                         ? 'bg-slate-200/50 text-slate-900' 
