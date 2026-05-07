@@ -17,7 +17,13 @@ import {
   ChevronDown,
   ChevronRight,
   Layers,
-  Database
+  Database,
+  Search,
+  BookOpen,
+  ClipboardList,
+  FileCheck,
+  History,
+  Copy
 } from 'lucide-react';
 
 import { motion, AnimatePresence } from 'motion/react';
@@ -30,64 +36,72 @@ interface SidebarProps {
   setCurrentEnterprise: (enterprise: { id: string; name: string }) => void;
 }
 
-interface SubItem {
+interface MenuItem {
   id: string;
   label: string;
-  children?: { id: string; label: string }[];
+  icon: any;
+  children?: { id: string; label: string; icon: any }[];
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, currentEnterprise }) => {
-  const [isBusinessOpen, setIsBusinessOpen] = useState(true);
-  const [expandedSubItems, setExpandedSubItems] = useState<string[]>([]);
+  const [openSections, setOpenSections] = useState<string[]>(['tender-lifecycle']);
 
-  const isPersonal = currentEnterprise.id === 'personal';
-
-  const navItems = [
+  const menuItems: MenuItem[] = [
     { id: 'dashboard', label: '首页', icon: LayoutDashboard },
-    { id: 'business-dashboard', label: '业务仪表盘', icon: BarChart3 },
-    ...(!isPersonal ? [
-      { id: 'org', label: '组织架构', icon: Network },
-      { id: 'enterprise', label: '企业资料', icon: Building2 },
-      { id: 'knowledge-base', label: '企业知识库', icon: Database },
-    ] : [
-      { id: 'knowledge-base', label: '个人知识库', icon: Database },
-    ]),
-  ];
-
-  const businessItems: SubItem[] = [
-    { id: 'leads', label: '商机线索' },
-    { id: 'project-registration', label: '投标项目登记' },
-    { id: 'parsing', label: '招标文件解析' },
-    { id: 'ai-prep', label: 'AI编标' },
-    { id: 'inspection', label: '标书检查' },
-    { id: 'simulation', label: '模拟开标' },
-    { id: 'deposit-management', label: '保证金管理' },
     { 
-      id: 'opening-management', 
-      label: '投标/开标情况管理'
+      id: 'tender-lifecycle', 
+      label: '投标项目管理', 
+      icon: Briefcase,
+      children: [
+        { id: 'business-dashboard', label: '业务仪表盘', icon: BarChart3 },
+        { id: 'project-registration', label: '投标项目登记', icon: ClipboardList },
+        { id: 'deposit-management', label: '保证金管理', icon: Wallet },
+        { id: 'opening-management', label: '投标/开标情况管理', icon: History },
+        { id: 'other-materials', label: '项目其他材料', icon: Archive },
+      ]
     },
-    { id: 'other-materials', label: '项目其他材料' },
+    { 
+      id: 'knowledge-asset', 
+      label: '知识资产管理', 
+      icon: Database,
+      children: [
+        { id: 'knowledge-base', label: '企业知识库', icon: BookOpen },
+        { id: 'enterprise', label: '企业资料', icon: Building2 },
+      ]
+    },
+    { 
+      id: 'smart-tender', 
+      label: '标书编制管控', 
+      icon: BrainCircuit,
+      children: [
+        { id: 'parsing', label: '招标文件解析', icon: FileSearch },
+        { id: 'ai-prep', label: 'AI编标', icon: Lightbulb },
+      ]
+    },
+    { 
+      id: 'compliance-risk', 
+      label: '合规风控审查', 
+      icon: ShieldCheck,
+      children: [
+        { id: 'inspection', label: '标书检查', icon: FileCheck },
+        { id: 'version-comparison', label: '多版本比对', icon: Copy },
+      ]
+    },
   ];
 
-  const toggleSubItem = (id: string) => {
-    setExpandedSubItems(prev => 
+  const toggleSection = (id: string) => {
+    setOpenSections(prev => 
       prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]
     );
   };
 
-  // Auto-open business menu and sub-items if active
+  // Auto-open sections if a child is active
   useEffect(() => {
-    const isBusinessSub = businessItems.some(item => 
-      item.id === activeTab || item.children?.some(child => child.id === activeTab)
+    const parent = menuItems.find(item => 
+      item.children?.some(child => child.id === activeTab)
     );
-    if (isBusinessSub) {
-      setIsBusinessOpen(true);
-      const parent = businessItems.find(item => 
-        item.children?.some(child => child.id === activeTab)
-      );
-      if (parent && !expandedSubItems.includes(parent.id)) {
-        setExpandedSubItems(prev => [...prev, parent.id]);
-      }
+    if (parent && !openSections.includes(parent.id)) {
+      setOpenSections(prev => [...prev, parent.id]);
     }
   }, [activeTab]);
 
@@ -95,106 +109,114 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, currentEnter
     <motion.aside 
       initial={{ x: -20, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
-      className="w-64 bg-white border-r border-slate-200 flex flex-col shrink-0 h-screen sticky top-0"
+      className="w-96 bg-slate-50/50 border-r border-slate-200 flex flex-col shrink-0 h-screen sticky top-0"
     >
       <div className="p-6 flex items-center gap-3">
-        <div className="size-8 bg-primary rounded-lg flex items-center justify-center text-white">
-          <Archive size={20} />
+        <div className="size-9 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
+          <Archive size={22} />
         </div>
         <div>
-          <h1 className="text-lg font-bold leading-none tracking-tight">投标管理系统</h1>
+          <h1 className="text-xl font-bold leading-none tracking-tight text-slate-800">投标管理系统</h1>
         </div>
       </div>
 
       <nav className="flex-1 flex flex-col min-h-0 overflow-y-auto custom-scrollbar">
-        <div className="px-4 py-2 space-y-1">
-          {navItems.map((item) => (
+        <div className="px-3 py-2 space-y-1.5">
+          {menuItems.map((item) => (
             <div key={item.id} className="space-y-1">
-              <button
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all ${
-                  activeTab === item.id
-                    ? 'sidebar-item-active shadow-sm' 
-                    : 'text-slate-600 hover:bg-slate-50'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <item.icon size={18} />
-                  <span className="text-sm font-bold">{item.label}</span>
-                </div>
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex-1 px-4 py-2 min-h-0 space-y-2">
-          {/* Business Management Menu */}
-          <div>
-            <div
-              className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-primary bg-primary/5"
-            >
-              <div className="flex items-center gap-3">
-                <Layers size={18} />
-                <span className="text-sm font-bold">业务管理</span>
-              </div>
-            </div>
-
-            <div className="mt-1 ml-4 pl-2 border-l border-slate-100 space-y-1 py-1">
-              {businessItems.map((item) => (
-                <div key={item.id} className="space-y-1">
+              {item.children ? (
+                <>
                   <button
-                    onClick={() => {
-                      if (item.id === 'inspection') {
-                        window.open('https://biaoshujiancha.graybruce.cn', '_blank');
-                        return;
-                      }
-                      if (item.id === 'ai-prep') {
-                        window.open('https://bqpoint.com/AIbianbiao/dist/index.html', '_blank');
-                        return;
-                      }
-                      if (item.children) {
-                        toggleSubItem(item.id);
-                      } else {
-                        setActiveTab(item.id);
-                      }
-                    }}
-                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-all ${
-                      activeTab === item.id || item.children?.some(c => c.id === activeTab)
-                        ? 'text-primary bg-primary/5 font-bold' 
-                        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                    onClick={() => toggleSection(item.id)}
+                    className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${
+                      openSections.includes(item.id) || item.children.some(c => c.id === activeTab)
+                        ? 'bg-slate-200/50 text-slate-900' 
+                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                     }`}
                   >
-                    <span className="text-[12px] font-medium whitespace-nowrap">
-                      {item.label}
-                    </span>
-                    {item.children && (
-                      expandedSubItems.includes(item.id) ? <ChevronDown size={12} /> : <ChevronRight size={12} />
-                    )}
+                    <div className="flex items-center gap-3">
+                      <item.icon size={20} className={
+                        openSections.includes(item.id) || item.children.some(c => c.id === activeTab)
+                          ? 'text-slate-900'
+                          : 'text-slate-500 group-hover:text-slate-900'
+                      } />
+                      <span className="text-[14px] font-bold text-left">{item.label}</span>
+                    </div>
+                    <motion.div
+                      animate={{ rotate: openSections.includes(item.id) ? 90 : 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <ChevronRight size={14} className="text-slate-400" />
+                    </motion.div>
                   </button>
 
-                  {item.children && expandedSubItems.includes(item.id) && (
-                    <div className="ml-3 pl-3 border-l border-slate-100 space-y-1 py-1 max-h-40 overflow-y-auto custom-scrollbar">
-                      {item.children.map((child) => (
-                        <button
-                          key={child.id}
-                          onClick={() => setActiveTab(child.id)}
-                          className={`w-full flex items-center px-3 py-1.5 rounded-lg transition-all ${
-                            activeTab === child.id 
-                              ? 'text-primary bg-primary/5 font-bold' 
-                              : 'text-slate-400 hover:bg-slate-50 hover:text-slate-600'
-                          }`}
-                        >
-                          <span className="text-[11px] font-medium whitespace-nowrap">
-                            {child.label}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              ))}
+                  <AnimatePresence initial={false}>
+                    {openSections.includes(item.id) && (
+                      <motion.div 
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.3, ease: 'easeInOut' }}
+                        className="overflow-hidden relative ml-6"
+                      >
+                        {/* Vertical line connecting sub-items */}
+                        <div className="absolute left-4 top-0 bottom-4 w-px bg-slate-200" />
+                        
+                        <div className="mt-1 space-y-1 py-1">
+                          {item.children.map((child) => (
+                            <button
+                              key={child.id}
+                              onClick={() => {
+                                if (child.id === 'inspection') {
+                                  window.open('https://biaoshujiancha.graybruce.cn', '_blank');
+                                  return;
+                                }
+                                if (child.id === 'ai-prep') {
+                                  window.open('https://bqpoint.com/AIbianbiao/dist/index.html', '_blank');
+                                  return;
+                                }
+                                setActiveTab(child.id);
+                              }}
+                              className={`w-full flex items-center gap-3 px-8 py-2.5 rounded-xl transition-all group relative ${
+                                activeTab === child.id 
+                                  ? 'text-primary' 
+                                  : 'text-slate-500 hover:text-slate-900'
+                              }`}
+                            >
+                              <child.icon size={18} className={
+                                activeTab === child.id ? 'text-primary' : 'text-slate-400 group-hover:text-slate-700'
+                              } />
+                              <span className="text-[14px] font-medium text-left">
+                                {child.label}
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </>
+              ) : (
+                <button
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${
+                    activeTab === item.id
+                      ? 'bg-slate-200/50 text-slate-900' 
+                      : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <item.icon size={20} className={
+                      activeTab === item.id
+                        ? 'text-slate-900'
+                        : 'text-slate-500 group-hover:text-slate-900'
+                    } />
+                    <span className="text-[14px] font-bold">{item.label}</span>
+                  </div>
+                </button>
+              )}
             </div>
-          </div>
+          ))}
         </div>
       </nav>
     </motion.aside>

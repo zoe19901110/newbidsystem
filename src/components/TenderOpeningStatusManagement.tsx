@@ -285,6 +285,41 @@ const TenderOpeningStatusManagement: React.FC<TenderOpeningStatusManagementProps
   };
 
   React.useEffect(() => {
+    if (projects && projects.length > 0) {
+      setRecords((prev: any[]) => {
+        let hasChanges = false;
+        const newRecords = [...prev];
+        projects.forEach((p: any) => {
+          const existing = newRecords.find(r => r.projectCode === p.code || r.projectName === p.name);
+          if (!existing) {
+            newRecords.push({
+              id: `${Math.floor(Math.random() * 10000)}`,
+              projectCode: p.code,
+              projectName: p.name,
+              openingDate: p.bidOpeningTime?.split(' ')[0] || '--',
+              result: '待录入',
+              bidPrice: '--',
+              competitors: '--',
+              ranking: '--',
+              remarks: p.status,
+              contractStatus: '--',
+              fulfillmentStatus: '--',
+              hasOpeningInfo: false,
+              relatedProjectData: p // Add reference to full project data for filtering if needed
+            });
+            hasChanges = true;
+          } else {
+             if (existing.projectName !== p.name || existing.projectCode !== p.code) {
+               existing.projectName = p.name;
+               existing.projectCode = p.code;
+               hasChanges = true;
+             }
+          }
+        });
+        return hasChanges ? newRecords : prev;
+      });
+    }
+
     if (records.length > 0) return; // Only set rawRecords if empty
 
     const rawRecords = [
@@ -364,7 +399,7 @@ const TenderOpeningStatusManagement: React.FC<TenderOpeningStatusManagementProps
         projectCode: 'ZB-2026-020',
         projectName: `智慧园区二期弱电工程`,
         openingDate: '2026-04-10',
-        result: '',
+        result: '待录入',
         bidPrice: 0,
         competitors: 0,
         ranking: 0,
@@ -433,14 +468,30 @@ const TenderOpeningStatusManagement: React.FC<TenderOpeningStatusManagementProps
             <input 
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              max={endDate || undefined}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (endDate && val > endDate) {
+                  alert('开始日期不能晚于结束日期');
+                  return;
+                }
+                setStartDate(val);
+              }}
               className="bg-transparent border-none outline-none text-sm text-slate-600 font-medium py-1 w-32"
             />
             <span className="text-slate-400 text-xs">至</span>
             <input 
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              min={startDate || undefined}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (startDate && val < startDate) {
+                  alert('结束日期不能早于开始日期');
+                  return;
+                }
+                setEndDate(val);
+              }}
               className="bg-transparent border-none outline-none text-sm text-slate-600 font-medium py-1 w-32"
             />
           </div>
@@ -454,6 +505,7 @@ const TenderOpeningStatusManagement: React.FC<TenderOpeningStatusManagementProps
               <option value="全部">项目状态</option>
               <option value="中标">中标</option>
               <option value="未中标">未中标</option>
+              <option value="待录入">待录入</option>
             </select>
             <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-focus-within:text-primary transition-colors" size={16} />
           </div>
@@ -552,7 +604,8 @@ const TenderOpeningStatusManagement: React.FC<TenderOpeningStatusManagementProps
                 const matchesSearch = r.projectName.includes(appliedFilters.searchTerm) || r.projectCode.includes(appliedFilters.searchTerm);
                 const matchesStartDate = !appliedFilters.startDate || r.openingDate >= appliedFilters.startDate;
                 const matchesEndDate = !appliedFilters.endDate || r.openingDate <= appliedFilters.endDate;
-                const matchesStatus = appliedFilters.statusFilter === '全部' || r.result === appliedFilters.statusFilter;
+                const currentResult = r.result === '不明确' || !r.result ? '待录入' : r.result;
+                const matchesStatus = appliedFilters.statusFilter === '全部' || currentResult === appliedFilters.statusFilter;
                 const matchesFulfillment = appliedFilters.fulfillmentFilter === '全部' || r.fulfillmentStatus === appliedFilters.fulfillmentFilter;
                 return matchesSearch && matchesStartDate && matchesEndDate && matchesStatus && matchesFulfillment;
               })
@@ -566,13 +619,13 @@ const TenderOpeningStatusManagement: React.FC<TenderOpeningStatusManagementProps
                     <div className="flex flex-col gap-1 overflow-hidden">
                       <div className="flex items-center gap-2 overflow-hidden">
                         <span className={`text-[10px] text-slate-400 shrink-0`}>{record.projectCode}</span>
-                        {record.hasOpeningInfo && (
-                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
-                            record.result === '中标' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
-                          }`}>
-                            {record.result}
-                          </span>
-                        )}
+                        <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                          record.result === '中标' ? 'bg-emerald-50 text-emerald-600' : 
+                          record.result === '未中标' ? 'bg-red-50 text-red-600' :
+                          'bg-slate-100 text-slate-500'
+                        }`}>
+                          {record.result === '不明确' || !record.result ? '待录入' : record.result}
+                        </span>
                         {projects.find(p => p.code === record.projectCode || p.name === record.projectName)?.status === '放弃投标' && (
                           <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 shrink-0">
                             已暂停
@@ -637,7 +690,8 @@ const TenderOpeningStatusManagement: React.FC<TenderOpeningStatusManagementProps
           const matchesSearch = r.projectName.includes(appliedFilters.searchTerm) || r.projectCode.includes(appliedFilters.searchTerm);
           const matchesStartDate = !appliedFilters.startDate || r.openingDate >= appliedFilters.startDate;
           const matchesEndDate = !appliedFilters.endDate || r.openingDate <= appliedFilters.endDate;
-          const matchesStatus = appliedFilters.statusFilter === '全部' || r.result === appliedFilters.statusFilter;
+          const currentResult = r.result === '不明确' || !r.result ? '待录入' : r.result;
+          const matchesStatus = appliedFilters.statusFilter === '全部' || currentResult === appliedFilters.statusFilter;
           const matchesFulfillment = appliedFilters.fulfillmentFilter === '全部' || r.fulfillmentStatus === appliedFilters.fulfillmentFilter;
           return matchesSearch && matchesStartDate && matchesEndDate && matchesStatus && matchesFulfillment;
         }).length / pageSize)}
@@ -648,7 +702,8 @@ const TenderOpeningStatusManagement: React.FC<TenderOpeningStatusManagementProps
           const matchesSearch = r.projectName.includes(appliedFilters.searchTerm) || r.projectCode.includes(appliedFilters.searchTerm);
           const matchesStartDate = !appliedFilters.startDate || r.openingDate >= appliedFilters.startDate;
           const matchesEndDate = !appliedFilters.endDate || r.openingDate <= appliedFilters.endDate;
-          const matchesStatus = appliedFilters.statusFilter === '全部' || r.result === appliedFilters.statusFilter;
+          const currentResult = r.result === '不明确' || !r.result ? '待录入' : r.result;
+          const matchesStatus = appliedFilters.statusFilter === '全部' || currentResult === appliedFilters.statusFilter;
           const matchesFulfillment = appliedFilters.fulfillmentFilter === '全部' || r.fulfillmentStatus === appliedFilters.fulfillmentFilter;
           return matchesSearch && matchesStartDate && matchesEndDate && matchesStatus && matchesFulfillment;
         }).length}
@@ -976,7 +1031,7 @@ const TenderOpeningStatusManagement: React.FC<TenderOpeningStatusManagementProps
                           </h5>
                           {isEditing && (
                             <button 
-                              onClick={() => setOpeningRecords([...openingRecords, { units: '', price: '', rank: '', isWinner: false, isSelf: false }])}
+                              onClick={() => setOpeningRecords([...openingRecords, { units: '', price: 0, rank: '', isWinner: false, isSelf: false }])}
                               className="text-sm font-bold text-primary hover:opacity-80 transition-opacity flex items-center gap-1"
                             >
                               <Plus size={18} /> 添加参标单位
@@ -1299,7 +1354,7 @@ const TenderOpeningStatusManagement: React.FC<TenderOpeningStatusManagementProps
                         </div>
                         {isEditing && (
                           <button 
-                            onClick={() => setContractRecords([...contractRecords, { id: '', name: '', date: '', amount: '', owner: '', duration: '', status: '待定', fulfillmentDate: '', expectedCompletionDate: '' }])}
+                            onClick={() => setContractRecords([...contractRecords, { id: '', name: '', date: '', amount: 0, owner: '', duration: '', status: '待定', fulfillmentDate: '', expectedCompletionDate: '' }])}
                             className="text-sm font-bold text-primary hover:opacity-80 transition-opacity flex items-center gap-1"
                           >
                             <Plus size={18} /> 添加合同
@@ -1572,7 +1627,7 @@ const TenderOpeningStatusManagement: React.FC<TenderOpeningStatusManagementProps
                         let hasSelf = false;
                         for (let i = 0; i < openingRecords.length; i++) {
                           const record = openingRecords[i];
-                          if (!record.units || record.price === '' || record.price === null || record.price === undefined || !record.rank) {
+                          if (!record.units || record.price === null || record.price === undefined || !record.rank) {
                             isValid = false;
                           }
                           if (record.isSelf) {

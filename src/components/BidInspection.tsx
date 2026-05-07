@@ -29,11 +29,11 @@ import { motion, AnimatePresence } from 'motion/react';
 
 interface BidInspectionProps {
   currentEnterprise?: { id: string; name: string };
-  uploadedFiles: Record<string, boolean>;
+  uploadedFilesMapping: Record<string, Record<string, boolean>>;
   projects?: any[];
 }
 
-const BidInspection: React.FC<BidInspectionProps> = ({ currentEnterprise, uploadedFiles, projects = [] }) => {
+const BidInspection: React.FC<BidInspectionProps> = ({ currentEnterprise, uploadedFilesMapping, projects = [] }) => {
   const [view, setView] = useState<'list' | 'detail'>('list');
   const [selectedProject, setSelectedProject] = useState<any>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -49,7 +49,7 @@ const BidInspection: React.FC<BidInspectionProps> = ({ currentEnterprise, upload
   };
 
   if (view === 'detail') {
-    return <BidInspectionDetail onBack={() => setView('list')} project={selectedProject} uploadedFiles={uploadedFiles} projects={projects} />;
+    return <BidInspectionDetail onBack={() => setView('list')} project={selectedProject} uploadedFiles={uploadedFilesMapping[selectedProject?.id || 'default'] || {}} projects={projects} />;
   }
 
   return (

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 import { 
   Plus, 
   Search, 
@@ -41,11 +42,13 @@ const SecurityDepositManagement: React.FC<SecurityDepositManagementProps> = ({ c
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [refundStatusFilter, setRefundStatusFilter] = useState('全部');
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState('全部');
   const [appliedFilters, setAppliedFilters] = useState({
     searchTerm: '',
     startDate: '',
     endDate: '',
-    refundStatusFilter: '全部'
+    refundStatusFilter: '全部',
+    paymentStatusFilter: '全部'
   });
   const [showDepositModal, setShowDepositModal] = useState(false);
   const [selectedDeposit, setSelectedDeposit] = useState<any>(null);
@@ -65,7 +68,7 @@ const SecurityDepositManagement: React.FC<SecurityDepositManagementProps> = ({ c
     160     // 操作
   ]);
 
-  const [deposits, setDeposits] = useState<any[]>([
+  const [deposits, setDeposits] = useLocalStorage<any[]>('depositsList', [
     {
       id: 'DEP-2024-001',
       projectName: '2024年智慧交通管理平台建设项目',
@@ -102,13 +105,51 @@ const SecurityDepositManagement: React.FC<SecurityDepositManagementProps> = ({ c
       type: '',
       bank: '',
       date: '',
-      status: '',
-      refundStatus: '',
+      status: '未缴纳',
+      refundStatus: '--',
       refundDate: '',
       vouchers: [],
       hasDepositInfo: false
     }
   ]);
+
+  React.useEffect(() => {
+    if (projects && projects.length > 0) {
+      setDeposits((prev: any[]) => {
+        let hasChanges = false;
+        const newDeposits = [...prev];
+        projects.forEach(p => {
+          // Sync name and code changes
+          const existing = newDeposits.find(d => d.projectCode === p.code || d.projectName === p.name);
+          if (!existing) {
+            newDeposits.push({
+              id: `DEP-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
+              projectName: p.name,
+              projectCode: p.code,
+              amount: p.deposit || p.depositAmount || '待填写',
+              type: '待填写',
+              bank: '--',
+              date: '--',
+              status: '未缴纳',
+              refundStatus: '待退还',
+              refundDate: '',
+              vouchers: [],
+              hasDepositInfo: false
+            });
+            hasChanges = true;
+          } else {
+            // Update name and code if changed
+            if (existing.projectName !== p.name || existing.projectCode !== p.code) {
+              existing.projectName = p.name;
+              existing.projectCode = p.code;
+              hasChanges = true;
+            }
+          }
+        });
+        return hasChanges ? newDeposits : prev;
+      });
+    }
+  }, [projects, setDeposits]);
 
   const [formData, setFormData] = useState({
     projectName: '',
@@ -249,18 +290,47 @@ const SecurityDepositManagement: React.FC<SecurityDepositManagementProps> = ({ c
             <input 
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              max={endDate || undefined}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (endDate && val > endDate) {
+                  alert('开始日期不能晚于结束日期');
+                  return;
+                }
+                setStartDate(val);
+              }}
               className="bg-transparent border-none outline-none text-sm text-slate-600 font-medium py-1 w-32"
             />
             <span className="text-slate-400 text-xs">至</span>
             <input 
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              min={startDate || undefined}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (startDate && val < startDate) {
+                  alert('结束日期不能早于开始日期');
+                  return;
+                }
+                setEndDate(val);
+              }}
               className="bg-transparent border-none outline-none text-sm text-slate-600 font-medium py-1 w-32"
             />
           </div>
           
+          <div className="w-40 relative group">
+            <select 
+              value={paymentStatusFilter}
+              onChange={(e) => setPaymentStatusFilter(e.target.value)}
+              className="w-full pl-4 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-primary/20 focus:bg-white transition-all appearance-none cursor-pointer text-slate-600 font-medium"
+            >
+              <option value="全部">缴纳状态</option>
+              <option value="已缴纳">已缴纳</option>
+              <option value="未缴纳">未缴纳</option>
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none group-focus-within:text-primary transition-colors" size={16} />
+          </div>
+
           <div className="w-40 relative group">
             <select 
               value={refundStatusFilter}
@@ -287,7 +357,8 @@ const SecurityDepositManagement: React.FC<SecurityDepositManagementProps> = ({ c
                 searchTerm,
                 startDate,
                 endDate,
-                refundStatusFilter
+                refundStatusFilter,
+                paymentStatusFilter
               });
               setCurrentPage(1); // Reset to first page on new query
             }}
@@ -301,11 +372,13 @@ const SecurityDepositManagement: React.FC<SecurityDepositManagementProps> = ({ c
               setStartDate('');
               setEndDate('');
               setRefundStatusFilter('全部');
+              setPaymentStatusFilter('全部');
               setAppliedFilters({
                 searchTerm: '',
                 startDate: '',
                 endDate: '',
-                refundStatusFilter: '全部'
+                refundStatusFilter: '全部',
+                paymentStatusFilter: '全部'
               });
               setCurrentPage(1);
             }}
@@ -351,7 +424,9 @@ const SecurityDepositManagement: React.FC<SecurityDepositManagementProps> = ({ c
                 const matchesStartDate = !appliedFilters.startDate || d.date >= appliedFilters.startDate;
                 const matchesEndDate = !appliedFilters.endDate || d.date <= appliedFilters.endDate;
                 const matchesRefundStatus = appliedFilters.refundStatusFilter === '全部' || d.refundStatus === appliedFilters.refundStatusFilter;
-                return matchesSearch && matchesStartDate && matchesEndDate && matchesRefundStatus;
+                const currentStatus = d.status || '未缴纳';
+                const matchesPaymentStatus = appliedFilters.paymentStatusFilter === '全部' || currentStatus === appliedFilters.paymentStatusFilter;
+                return matchesSearch && matchesStartDate && matchesEndDate && matchesRefundStatus && matchesPaymentStatus;
               })
               .slice((currentPage - 1) * pageSize, currentPage * pageSize)
               .map((deposit) => {
@@ -364,11 +439,11 @@ const SecurityDepositManagement: React.FC<SecurityDepositManagementProps> = ({ c
                       <div className="flex flex-col gap-1 overflow-hidden">
                         <div className="flex items-center gap-2 mb-1 overflow-hidden">
                           <p className="text-xs font-bold text-primary shrink-0">{deposit.id}</p>
-                          {deposit.hasDepositInfo && (
-                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-green-50 text-green-600 shrink-0`}>
-                              {deposit.status}
-                            </span>
-                          )}
+                          <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold shrink-0 ${
+                            deposit.status === '已缴纳' ? 'bg-green-50 text-green-600' : 'bg-slate-100 text-slate-500'
+                          }`}>
+                            {deposit.status || '未缴纳'}
+                          </span>
                           {isPaused && (
                             <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-500 shrink-0">
                               已暂停
@@ -443,7 +518,9 @@ const SecurityDepositManagement: React.FC<SecurityDepositManagementProps> = ({ c
           const matchesStartDate = !appliedFilters.startDate || d.date >= appliedFilters.startDate;
           const matchesEndDate = !appliedFilters.endDate || d.date <= appliedFilters.endDate;
           const matchesRefundStatus = appliedFilters.refundStatusFilter === '全部' || d.refundStatus === appliedFilters.refundStatusFilter;
-          return matchesSearch && matchesStartDate && matchesEndDate && matchesRefundStatus;
+          const currentStatus = d.status || '未缴纳';
+          const matchesPaymentStatus = appliedFilters.paymentStatusFilter === '全部' || currentStatus === appliedFilters.paymentStatusFilter;
+          return matchesSearch && matchesStartDate && matchesEndDate && matchesRefundStatus && matchesPaymentStatus;
         }).length / pageSize)}
         pageSize={pageSize}
         onPageChange={setCurrentPage}
@@ -453,7 +530,9 @@ const SecurityDepositManagement: React.FC<SecurityDepositManagementProps> = ({ c
           const matchesStartDate = !appliedFilters.startDate || d.date >= appliedFilters.startDate;
           const matchesEndDate = !appliedFilters.endDate || d.date <= appliedFilters.endDate;
           const matchesRefundStatus = appliedFilters.refundStatusFilter === '全部' || d.refundStatus === appliedFilters.refundStatusFilter;
-          return matchesSearch && matchesStartDate && matchesEndDate && matchesRefundStatus;
+          const currentStatus = d.status || '未缴纳';
+          const matchesPaymentStatus = appliedFilters.paymentStatusFilter === '全部' || currentStatus === appliedFilters.paymentStatusFilter;
+          return matchesSearch && matchesStartDate && matchesEndDate && matchesRefundStatus && matchesPaymentStatus;
         }).length}
       />
 

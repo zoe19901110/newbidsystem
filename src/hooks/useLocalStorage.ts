@@ -13,6 +13,20 @@ export function useLocalStorage<T>(key: string, initialValue: T): [T, (value: T 
 
   useEffect(() => {
     try {
+      const item = window.localStorage.getItem(key);
+      if (item) {
+        setStoredValue(JSON.parse(item));
+      } else {
+        setStoredValue(initialValue);
+      }
+    } catch (error) {
+      console.warn('Error reading localStorage on key change', error);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
+
+  useEffect(() => {
+    try {
       window.localStorage.setItem(key, JSON.stringify(storedValue));
     } catch (error) {
       console.warn('Error setting localStorage', error);

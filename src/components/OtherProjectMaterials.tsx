@@ -315,15 +315,19 @@ const OtherProjectMaterials: React.FC<OtherProjectMaterialsProps> = ({ currentEn
 
   // Fetch initial data
   useEffect(() => {
+    if (allProjects && allProjects.length > 0) {
+      setProjects(allProjects);
+    }
+  }, [allProjects]);
+
+  useEffect(() => {
     const fetchData = async () => {
       try {
-        const [projRes, catRes, matRes] = await Promise.all([
-          fetch('/api/projects'),
+        const [catRes, matRes] = await Promise.all([
           fetch('/api/categories'),
           fetch('/api/materials')
         ]);
         
-        if (projRes.ok) setProjects(await projRes.json());
         if (catRes.ok) setCategories(await catRes.json());
         if (matRes.ok) setProjectMaterials(await matRes.json());
       } catch (error) {
@@ -649,14 +653,30 @@ const OtherProjectMaterials: React.FC<OtherProjectMaterialsProps> = ({ currentEn
             <input 
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              max={endDate || undefined}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (endDate && val > endDate) {
+                  alert('开始日期不能晚于结束日期');
+                  return;
+                }
+                setStartDate(val);
+              }}
               className="bg-transparent border-none outline-none text-sm text-slate-600 font-medium py-1 w-32"
             />
             <span className="text-slate-400 text-xs">至</span>
             <input 
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              min={startDate || undefined}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (startDate && val < startDate) {
+                  alert('结束日期不能早于开始日期');
+                  return;
+                }
+                setEndDate(val);
+              }}
               className="bg-transparent border-none outline-none text-sm text-slate-600 font-medium py-1 w-32"
             />
           </div>

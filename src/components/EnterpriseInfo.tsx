@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocalStorage } from '../hooks/useLocalStorage';
 import { 
   ArrowLeft,
   Building2, 
@@ -62,7 +63,7 @@ const EnterpriseInfo: React.FC<EnterpriseInfoProps> = ({ initialTab, currentEnte
   const [showPerformanceDetail, setShowPerformanceDetail] = useState(false);
   const [showQualificationDetail, setShowQualificationDetail] = useState(false);
   const [editingQualificationIndex, setEditingQualificationIndex] = useState<number | null>(null);
-  const [qualificationFormData, setQualificationFormData] = useState<any>({
+  const [qualificationFormData, setQualificationFormData] = useLocalStorage<any>(`entInfo_qualification_${currentEnterprise.id}`, {
     employer: '上线运维测试有限公司',
     name: '',
     registrationNumber: '',
@@ -74,7 +75,7 @@ const EnterpriseInfo: React.FC<EnterpriseInfoProps> = ({ initialTab, currentEnte
   });
   const [editingPerformanceIndex, setEditingPerformanceIndex] = useState<number | null>(null);
   const [performanceDetailTab, setPerformanceDetailTab] = useState('notification');
-  const [performanceFormData, setPerformanceFormData] = useState<any>({
+  const [performanceFormData, setPerformanceFormData] = useLocalStorage<any>(`entInfo_performance_${currentEnterprise.id}`, {
     packageName: '',
     packageCode: '',
     client: '',
@@ -104,7 +105,7 @@ const EnterpriseInfo: React.FC<EnterpriseInfoProps> = ({ initialTab, currentEnte
       completion: [] as any[]
     }
   });
-  const [personnelFormData, setPersonnelFormData] = useState<any>({
+  const [personnelFormData, setPersonnelFormData] = useLocalStorage<any>(`entInfo_personnel_${currentEnterprise.id}`, {
     // 基本信息
     name: '',
     isForeigner: '否',
@@ -223,7 +224,7 @@ const EnterpriseInfo: React.FC<EnterpriseInfoProps> = ({ initialTab, currentEnte
     fileInputRef.current?.click();
   };
 
-  const [basicInfoForm, setBasicInfoForm] = useState({
+  const [basicInfoForm, setBasicInfoForm] = useLocalStorage(`entInfo_basic_${currentEnterprise.id}`, {
     enterpriseName: '上线运维测试有限公司',
     creditCode: '91999779974015331P',
     legalPerson: '',
@@ -1583,7 +1584,15 @@ const EnterpriseInfo: React.FC<EnterpriseInfoProps> = ({ initialTab, currentEnte
                                               type="date"
                                               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-blue-500 transition-all"
                                               value={performanceFormData.actualCommencementDate}
-                                              onChange={(e) => setPerformanceFormData({...performanceFormData, actualCommencementDate: e.target.value})}
+                                              max={performanceFormData.actualCompletionDate || undefined}
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (performanceFormData.actualCompletionDate && val > performanceFormData.actualCompletionDate) {
+                                                  alert('开工日期不能晚于竣工验收日期');
+                                                  return;
+                                                }
+                                                setPerformanceFormData({...performanceFormData, actualCommencementDate: val});
+                                              }}
                                             />
                                             <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={14} />
                                           </div>
@@ -1595,7 +1604,15 @@ const EnterpriseInfo: React.FC<EnterpriseInfoProps> = ({ initialTab, currentEnte
                                               type="date"
                                               className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-blue-500 transition-all"
                                               value={performanceFormData.actualCompletionDate}
-                                              onChange={(e) => setPerformanceFormData({...performanceFormData, actualCompletionDate: e.target.value})}
+                                              min={performanceFormData.actualCommencementDate || undefined}
+                                              onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (performanceFormData.actualCommencementDate && val < performanceFormData.actualCommencementDate) {
+                                                  alert('竣工验收日期不能早于开工日期');
+                                                  return;
+                                                }
+                                                setPerformanceFormData({...performanceFormData, actualCompletionDate: val});
+                                              }}
                                             />
                                             <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={14} />
                                           </div>
@@ -1847,7 +1864,15 @@ const EnterpriseInfo: React.FC<EnterpriseInfoProps> = ({ initialTab, currentEnte
                                             type="date"
                                             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-blue-500 transition-all"
                                             value={qualificationFormData.startDate}
-                                            onChange={(e) => setQualificationFormData({...qualificationFormData, startDate: e.target.value})}
+                                            max={qualificationFormData.endDate || undefined}
+                                            onChange={(e) => {
+                                              const val = e.target.value;
+                                              if (qualificationFormData.endDate && val > qualificationFormData.endDate) {
+                                                alert('开始日期不能晚于截止日期');
+                                                return;
+                                              }
+                                              setQualificationFormData({...qualificationFormData, startDate: val});
+                                            }}
                                           />
                                           <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={14} />
                                         </div>
@@ -1860,7 +1885,15 @@ const EnterpriseInfo: React.FC<EnterpriseInfoProps> = ({ initialTab, currentEnte
                                             type="date"
                                             className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-blue-500 transition-all"
                                             value={qualificationFormData.endDate}
-                                            onChange={(e) => setQualificationFormData({...qualificationFormData, endDate: e.target.value})}
+                                            min={qualificationFormData.startDate || undefined}
+                                            onChange={(e) => {
+                                              const val = e.target.value;
+                                              if (qualificationFormData.startDate && val < qualificationFormData.startDate) {
+                                                alert('截止日期不能早于开始日期');
+                                                return;
+                                              }
+                                              setQualificationFormData({...qualificationFormData, endDate: val});
+                                            }}
                                           />
                                           <Calendar className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-300 pointer-events-none" size={14} />
                                         </div>

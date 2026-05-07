@@ -529,7 +529,7 @@ const PostBidArchiving: React.FC<PostBidArchivingProps> = ({ currentEnterprise, 
                               alert(`开标记录第 ${i + 1} 行：请填写参标单位`);
                               return;
                             }
-                            if (record.price === '' || record.price === null || record.price === undefined) {
+                            if (record.price === null || record.price === undefined) {
                               alert(`开标记录第 ${i + 1} 行：请填写投标报价`);
                               return;
                             }
@@ -598,7 +598,7 @@ const PostBidArchiving: React.FC<PostBidArchivingProps> = ({ currentEnterprise, 
                           </h5>
                           {isEditing && (
                             <button 
-                              onClick={() => setOpeningRecords([...openingRecords, { units: '', price: '', rank: '', isWinner: false, isSelf: false }])}
+                              onClick={() => setOpeningRecords([...openingRecords, { units: '', price: 0, rank: '', isWinner: false, isSelf: false }])}
                               className="text-sm font-bold text-primary hover:opacity-80 transition-opacity flex items-center gap-1"
                             >
                               <Plus size={18} /> 添加参标单位
@@ -832,7 +832,7 @@ const PostBidArchiving: React.FC<PostBidArchivingProps> = ({ currentEnterprise, 
                         </div>
                         {isEditing && (
                           <button 
-                            onClick={() => setContractRecords([...contractRecords, { id: '', name: '', date: '', amount: '', owner: '', duration: '', status: '未开始', fulfillmentDate: '', expectedCompletionDate: '' }])}
+                            onClick={() => setContractRecords([...contractRecords, { id: '', name: '', date: '', amount: 0, owner: '', duration: '', status: '未开始', fulfillmentDate: '', expectedCompletionDate: '' }])}
                             className="text-sm font-bold text-primary hover:opacity-80 transition-opacity flex items-center gap-1"
                           >
                             <Plus size={18} /> 添加合同
@@ -1106,7 +1106,7 @@ const PostBidArchiving: React.FC<PostBidArchivingProps> = ({ currentEnterprise, 
                             alert(`开标记录第 ${i + 1} 行：请填写参标单位`);
                             return;
                           }
-                          if (record.price === '' || record.price === null || record.price === undefined) {
+                          if (record.price === null || record.price === undefined) {
                             alert(`开标记录第 ${i + 1} 行：请填写投标报价`);
                             return;
                           }

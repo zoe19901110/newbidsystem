@@ -21,6 +21,7 @@ import {
   BrainCircuit,
   History,
   ArrowRight,
+  ArrowLeft,
   User,
   Phone,
   Calendar,
@@ -225,20 +226,6 @@ const Workbench: React.FC<WorkbenchProps> = ({
   const [viewingDoc, setViewingDoc] = useState<string>('tender-doc');
   const [notifIndex, setNotifIndex] = useState(0);
 
-  const isTenderUploaded = !!uploadedFiles?.['tender-doc'];
-
-  const clarDocs = Object.keys(uploadedFiles || {})
-    .filter(key => key.startsWith('clar-doc-') && uploadedFiles[key])
-    .sort((a, b) => {
-      const numA = parseInt(a.split('-')[2]);
-      const numB = parseInt(b.split('-')[2]);
-      return numB - numA; // Latest first
-    });
-
-  const hasAnyDoc = isTenderUploaded || clarDocs.length > 0;
-  const hasMultipleDocs = (isTenderUploaded && clarDocs.length > 0) || clarDocs.length > 1;
-  const latestDocKey = clarDocs.length > 0 ? clarDocs[0] : (isTenderUploaded ? 'tender-doc' : null);
-
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0); // Dummy state for forcing re-render
   const [confirmDialog, setConfirmDialog] = useState<{ message: string, onConfirm: () => void } | null>(null);
@@ -259,6 +246,20 @@ const Workbench: React.FC<WorkbenchProps> = ({
     otherRemarks: '',
     status: '进行中'
   });
+
+  const isTenderUploaded = !!uploadedFiles?.['tender-doc'] || !!projectData?.isTenderUploaded;
+
+  const clarDocs = Object.keys(uploadedFiles || {})
+    .filter(key => key.startsWith('clar-doc-') && uploadedFiles[key])
+    .sort((a, b) => {
+      const numA = parseInt(a.split('-')[2]);
+      const numB = parseInt(b.split('-')[2]);
+      return numB - numA; // Latest first
+    });
+
+  const hasAnyDoc = isTenderUploaded || clarDocs.length > 0;
+  const hasMultipleDocs = (isTenderUploaded && clarDocs.length > 0) || clarDocs.length > 1;
+  const latestDocKey = clarDocs.length > 0 ? clarDocs[0] : (isTenderUploaded ? 'tender-doc' : null);
 
   const isPaused = projectData.status === '放弃投标';
 
@@ -293,12 +294,26 @@ const Workbench: React.FC<WorkbenchProps> = ({
     }
   }, [currentEnterprise.name, initialProjectData]);
 
+  useEffect(() => {
+    if (initialProjectData) {
+      setProjectData(initialProjectData);
+    }
+  }, [initialProjectData]);
+
+  useEffect(() => {
+    if (initialPhase && initialPhase !== currentPhase) {
+      setCurrentPhase(initialPhase);
+    }
+  }, [initialPhase]);
+
   const handleProjectDataChange = (field: string, value: string) => {
     if (isPaused) {
       alert('此项目已暂停');
       return;
     }
-    setProjectData(prev => ({ ...prev, [field]: value }));
+    const newData = { ...projectData, [field]: value };
+    setProjectData(newData);
+    onUpdateProject?.(newData);
   };
 
   const analysisResults = {
@@ -392,12 +407,18 @@ const Workbench: React.FC<WorkbenchProps> = ({
 
       {/* Project Header */}
       <div className="bg-white rounded-xl p-8 shadow-sm border border-slate-100 space-y-6">
-        <div className="flex items-center justify-between">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 relative">
-              <h2 className="text-2xl font-bold text-slate-900">{projectData.projectName}</h2>
+        <div className="flex items-start justify-between gap-6">
+          <div className="space-y-3 flex-1 min-w-0">
+            <div className="flex items-start gap-4 relative flex-col 2xl:flex-row 2xl:items-center">
+              <h2 
+                className="text-2xl font-bold text-slate-900 line-clamp-2 break-words"
+                style={{ maxWidth: '40em' }}
+                title={projectData.projectName}
+              >
+                {projectData.projectName}
+              </h2>
               
-              <div className="relative flex items-center gap-0">
+              <div className="relative flex items-center gap-0 shrink-0">
                 <button 
                   onClick={() => {
                     if (hasAnyDoc) {
@@ -482,7 +503,7 @@ const Workbench: React.FC<WorkbenchProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <button 
               onClick={() => {
                 if (isPaused) {
@@ -3486,6 +3507,42 @@ const PreparationPhase = ({
   const [showParsingPage, setShowParsingPage] = useState(false);
   const [clarificationRounds, setClarificationRounds] = useState<number>(0);
   
+  const [quota, setQuota] = useLocalStorage('parsing-quota', { total: 100, remaining: 100 });
+  
+  const [parsingHistory] = useState([
+    { name: '克东县 2021 年老旧小区改造项目招标文件.pdf', date: '2026-03-15', status: '完成' },
+    { name: '智慧城市二期建设项目招标文件.docx', date: '2026-03-10', status: '完成' }
+  ]);
+
+  const handleImmediateParsing = () => {
+    if (quota.remaining <= 0) {
+      alert('您的解析次数已用完，请联系管理员增加额度');
+      return;
+    }
+
+    const startParsing = () => {
+      setQuota(prev => ({ ...prev, remaining: Math.max(0, prev.remaining - 1) }));
+      handleStartAnalysis();
+    };
+
+    // Correctly detect clarification files (keys starting with clar-doc-)
+    const clarDocsArr = Object.keys(uploadedFiles || {}).filter(k => k.startsWith('clar-doc-') && uploadedFiles[k]);
+    
+    // Also check for tender-doc explicitly
+    const hasTenderDoc = uploadedFiles?.['tender-doc'] || isTenderUploaded;
+
+    if (clarDocsArr.length > 0) {
+      setConfirmDialog({
+        message: '检测到当前上传了答疑文件，是否用最新的答疑文件开始解析？',
+        onConfirm: startParsing
+      });
+    } else if (hasTenderDoc) {
+      startParsing();
+    } else {
+      alert('请先上传招标文件后再进行解析');
+    }
+  };
+
   const [activeOtherMaterial, setActiveOtherMaterial] = useState<{ id: string; label: string } | null>(null);
   
   // New states for upload parsing
@@ -3570,7 +3627,16 @@ const PreparationPhase = ({
       <div className="flex flex-col gap-6">
         <div className="h-2"></div>
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-8 h-[calc(100vh-300px)] overflow-y-auto">
-          <h2 className="text-2xl font-black text-slate-900 mb-6">解析报告</h2>
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="text-2xl font-black text-slate-900">解析报告</h2>
+            <button 
+              onClick={() => setIsAnalyzing(false)}
+              className="px-4 py-2 text-slate-500 hover:bg-slate-100 rounded-xl font-bold text-sm transition-all flex items-center gap-2"
+            >
+              <ArrowLeft size={16} />
+              返回
+            </button>
+          </div>
         <div className="space-y-4">
           <div className="p-4 bg-blue-50 rounded-lg text-blue-700 font-bold">解析完成，已提取项目基本信息。</div>
           <button 
@@ -3632,7 +3698,7 @@ const PreparationPhase = ({
                   alert('此项目已暂停');
                   return;
                 }
-                handleStartAnalysis();
+                handleImmediateParsing();
               }}
               disabled={isAnalyzing}
               className={`px-10 py-4 bg-primary text-white rounded-full font-black text-lg shadow-xl shadow-primary/20 hover:bg-primary/90 transition-all flex items-center gap-3 ${isAnalyzing || isPaused ? 'opacity-70 cursor-not-allowed' : ''}`}
@@ -3685,7 +3751,15 @@ const PreparationPhase = ({
                         <span className="px-2 py-0.5 bg-emerald-50 text-emerald-600 text-[10px] font-black rounded-full uppercase tracking-tighter">{item.status}</span>
                       </td>
                       <td className="px-6 py-4 text-right">
-                        <button className="text-primary hover:underline text-xs font-black opacity-0 group-hover:opacity-100 transition-opacity">查看详情</button>
+                        <button 
+                          onClick={() => {
+                            setShowResultPage(true);
+                            setAnalysisProgress(100);
+                          }}
+                          className="text-primary hover:underline text-xs font-black opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          查看详情
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -4297,19 +4371,60 @@ const PreparationPhase = ({
           <div className="absolute bottom-0 left-0 w-24 h-24 bg-blue-400/20 rounded-full blur-xl -ml-8 -mb-8 transition-transform group-hover:scale-150"></div>
           
           <div className="relative z-10">
-            <div className="size-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center mb-4 shadow-inner">
-              <FileSearch size={24} className="text-white" />
+            <div className="flex items-center justify-between mb-4">
+              <div className="size-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center shadow-inner">
+                <FileSearch size={24} className="text-white" />
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] text-blue-100 font-bold uppercase tracking-wider">剩余解析次数</p>
+                <p className="text-xl font-black">{quota.remaining} <span className="text-xs font-normal">/ {quota.total}</span></p>
+              </div>
             </div>
-            <h3 className="text-xl font-black mb-2">一键解析招标文件</h3>
+            <h3 className="text-xl font-black mb-2">立即解析招标文件</h3>
             <p className="text-blue-100 text-sm mb-6 leading-relaxed">
-              快速解析招标文件，系统将自动识别并关联至当前项目，方便后续查阅与管理。
+              利用 AI 深度解析最新招标文件与答疑文件，自动更新项目核心要素。
             </p>
             <button 
-              onClick={() => setShowParsingPage(true)}
+              onClick={handleImmediateParsing}
               className="w-full py-3 bg-white text-blue-600 rounded-xl font-black text-sm shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
             >
-              进入解析页面 <ArrowRight size={16} />
+              立即解析 <ArrowRight size={16} />
             </button>
+          </div>
+        </div>
+
+        {/* History Section in Sidebar */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
+              <History size={16} className="text-slate-400" />
+              解析历史记录
+            </h4>
+            <button 
+              onClick={() => setShowParsingPage(true)}
+              className="text-[10px] font-bold text-primary hover:underline"
+            >
+              全部
+            </button>
+          </div>
+          <div className="divide-y divide-slate-50">
+            {parsingHistory.map((item, i) => (
+              <div 
+                key={i} 
+                onClick={() => {
+                  setIsAnalyzing(false);
+                  setShowResultPage(true);
+                  setAnalysisProgress(100);
+                }}
+                className="px-5 py-3 hover:bg-slate-50 transition-colors cursor-pointer group"
+              >
+                <p className="text-xs font-bold text-slate-700 truncate group-hover:text-primary transition-colors">{item.name}</p>
+                <div className="flex items-center justify-between mt-1">
+                  <span className="text-[10px] text-slate-400">{item.date}</span>
+                  <span className="text-[9px] px-1.5 py-0.5 bg-green-50 text-green-600 rounded-full font-bold">已解析</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -4549,6 +4664,8 @@ const ArchivingPhase = ({ onOpenArchiving, onOpenAttachments, isPaused }: { onOp
   </div>
 );
 
+const DEPARTMENTS = ['工程部', '商务部', '财务部', '综合部', '技术部'];
+
 const ArchivingManagement = React.forwardRef(({ 
   isPaused, 
   openingRecords, 
@@ -4596,8 +4713,11 @@ const ArchivingManagement = React.forwardRef(({
       else if (u.department) depts.add(u.department);
     });
     const list = Array.from(depts);
-    return list.length > 0 ? list : ['工程部', '商务部', '财务部', '综合部', '技术部'];
+    return list.length > 0 ? list : DEPARTMENTS;
   }, [allUsers]);
+
+  const pName = projectData?.projectName || projectData?.name || '未知项目';
+  const pOpeningDate = projectData?.openingTime || projectData?.openingDate || '未知日期';
 
   useEffect(() => {
     if (departments.length > 0 && !selectedDept) {
@@ -4748,11 +4868,11 @@ const ArchivingManagement = React.forwardRef(({
         <div className="grid grid-cols-2 gap-8">
           <div className="space-y-1">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">关联项目 <span className="text-red-500">*</span></p>
-            <p className="text-sm font-bold text-slate-900">{projectData?.name || '未知项目'}</p>
+            <p className="text-sm font-bold text-slate-900">{pName}</p>
           </div>
           <div className="space-y-1">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">开标日期 <span className="text-red-500">*</span></p>
-            <p className="text-sm font-bold text-slate-900">{projectData?.openingDate || '未知日期'}</p>
+            <p className="text-sm font-bold text-slate-900">{pOpeningDate}</p>
           </div>
         </div>
       </div>
@@ -6127,7 +6247,7 @@ const ProjectAttachmentsModal = ({
     { 
       label: '招标文件', 
       icon: <FileText size={20} />, 
-      files: (uploadedFiles['tender-doc'] || true) ? [
+      files: uploadedFiles['tender-doc'] ? [
         { name: 'XX高速公路施工招标文件.pdf', size: '12.5MB', date: '2024-03-01' }
       ] : [] 
     },

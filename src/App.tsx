@@ -19,46 +19,64 @@ import Login from './components/Login';
 
 import { motion, AnimatePresence } from 'motion/react';
 import { User, Building2 } from 'lucide-react';
+import { useLocalStorage } from './hooks/useLocalStorage';
 
 export default function App() {
-  const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem('isLoggedIn') === 'true');
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [workbenchStage, setWorkbenchStage] = useState<string | undefined>(undefined);
-  const [projectData, setProjectData] = useState<any>(null);
-  const [projects, setProjects] = useState<any[]>([]);
+  const [isLoggedIn, setIsLoggedIn] = useLocalStorage('isLoggedIn', false);
+  const [activeTab, setActiveTab] = useLocalStorage('activeTab', 'dashboard');
+  const [workbenchStage, setWorkbenchStage] = useLocalStorage<string | undefined>('workbenchStage', undefined);
+  const [projectData, setProjectData] = useLocalStorage<any>('projectData', null);
+  const [projects, setProjects] = useLocalStorage<any[]>('tender-projects', []);
   const [isLoading, setIsLoading] = useState(true);
-  const [enterprises, setEnterprises] = useState([
-    { id: 'personal', name: '陈经理', status: '13800138000' },
+  const [profile, setProfile] = useLocalStorage('user-profile', {
+    name: '陈经理',
+    nickname: 'ProManager_Chen',
+    email: 'chen.manager@enterprise.com',
+    phone: '138 0000 8888'
+  });
+  const [enterprises, setEnterprises] = useLocalStorage('enterprises', [
+    { id: 'personal', name: profile?.nickname || '陈经理', status: '13800138000' },
     { id: '1', name: '中建八局第三建设有限公司', status: '已加入' },
     { id: '2', name: '中铁建工集团有限公司', status: '已加入' },
     { id: '3', name: '中国建筑第一局(集团)有限公司', status: '审核中' },
   ]);
-  const [currentEnterprise, setCurrentEnterprise] = useState(() => {
-    const saved = localStorage.getItem('currentEnterpriseId');
-    return enterprises.find(e => e.id === saved) || enterprises[1];
-  });
+
+  // Sync personal identity name with nickname
+  React.useEffect(() => {
+    setEnterprises(prev => prev.map(ent => 
+      ent.id === 'personal' ? { ...ent, name: profile.nickname } : ent
+    ));
+  }, [profile.nickname, setEnterprises]);
+  const [currentEnterpriseId, setCurrentEnterpriseId] = useLocalStorage('currentEnterpriseId', '1');
+  const currentEnterprise = React.useMemo(() => 
+    enterprises.find(e => e.id === currentEnterpriseId) || enterprises[1],
+    [enterprises, currentEnterpriseId]
+  );
 
   const handleLogin = (enterpriseId: string) => {
     const selected = enterprises.find(e => e.id === enterpriseId);
     if (selected) {
-      setCurrentEnterprise(selected);
-      localStorage.setItem('currentEnterpriseId', selected.id);
+      setCurrentEnterpriseId(selected.id);
     } else if (enterpriseId === 'personal') {
-      setCurrentEnterprise(enterprises[0]);
-      localStorage.setItem('currentEnterpriseId', enterprises[0].id);
+      setCurrentEnterpriseId(enterprises[0].id);
     }
     setIsLoggedIn(true);
-    localStorage.setItem('isLoggedIn', 'true');
   };
 
   const handleSwitchEnterprise = (ent: any) => {
-    setCurrentEnterprise(ent);
-    localStorage.setItem('currentEnterpriseId', ent.id);
+    setCurrentEnterpriseId(ent.id);
   };
 
-  const [uploadedFiles, setUploadedFiles] = useState<Record<string, boolean>>({
-    'tender-doc': true
-  });
+  const [uploadedFilesMapping, setUploadedFilesMapping] = useLocalStorage<Record<string, Record<string, boolean>>>('uploadedFilesMapping', {});
+  const activeProjectId = projectData?.id || 'default';
+  const uploadedFiles = uploadedFilesMapping[activeProjectId] || {};
+
+  const setUploadedFiles = React.useCallback((value: React.SetStateAction<Record<string, boolean>>) => {
+    setUploadedFilesMapping(prev => ({
+      ...prev,
+      [activeProjectId]: typeof value === 'function' ? value(prev[activeProjectId] || {}) : value
+    }));
+  }, [activeProjectId, setUploadedFilesMapping]);
 
   React.useEffect(() => {
     const fetchProjects = async () => {
@@ -66,7 +84,10 @@ export default function App() {
         const res = await fetch('/api/projects');
         if (res.ok) {
           const data = await res.json();
-          setProjects(data);
+          setProjects(prev => {
+            if (prev.length > 0) return prev;
+            return data;
+          });
         }
       } catch (err) {
         console.error('Failed to fetch projects:', err);
@@ -75,13 +96,24 @@ export default function App() {
       }
     };
     fetchProjects();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleUpdateProject = async (updatedProject: any) => {
     try {
       // In a real app we'd have a PUT endpoint, for now we can mock it or just update state 
       // but let's assume we want persistence. I'll add a save endpoint if needed.
-      setProjects(prev => prev.map(p => p.id === updatedProject.id ? { ...p, ...updatedProject } : p));
+      const mappedProjectToSave = {
+        ...updatedProject,
+        name: updatedProject.projectName || updatedProject.name,
+        code: updatedProject.projectNumber || updatedProject.code,
+        tenderer: updatedProject.tendererAndContact || updatedProject.tenderer,
+        agent: updatedProject.tenderAgentAndContact || updatedProject.agent,
+        bidOpeningTime: updatedProject.openingTime || updatedProject.bidOpeningTime,
+        deposit: updatedProject.depositAmount || updatedProject.deposit,
+      };
+
+      setProjects(prev => prev.map(p => p.id === updatedProject.id ? { ...p, ...mappedProjectToSave } : p));
       setProjectData(updatedProject);
     } catch (err) {
       console.error('Failed to update project:', err);
@@ -97,7 +129,38 @@ export default function App() {
       '标后归档': 'archiving'
     };
     if (data) {
-      setProjectData(data);
+      if (!data.id && data.projectName) {
+        // Find existing project by name
+        const existingProject = projects.find(p => p.name === data.projectName);
+        let finalData = data;
+        if (existingProject) {
+          finalData = { ...existingProject, ...data };
+        } else {
+          finalData = {
+            id: `PROJ-${Date.now()}`,
+            name: data.projectName,
+            code: data.projectNumber || `ZB-${new Date().getFullYear()}-${Math.floor(Math.random() * 1000).toString().padStart(3, '0')}`,
+            status: stage === '准备阶段' ? '投标中' : '进行中',
+            tenderer: data.tenderer || data.tendererAndContact || 'XX招标人',
+            tendererContact: data.tendererContact || '--',
+            agent: data.tenderAgent || data.tenderAgentAndContact || 'XX代理机构',
+            agentContact: data.agentContact || '--',
+            bidOpeningTime: data.openingTime || data.deadline || '--',
+            deposit: data.depositAmount || '--',
+            depositDeadline: data.depositDeadline || '--',
+            openingLocation: data.openingLocation || '--',
+            collectionTime: data.collectionTime || '--',
+            requirements: data.tenderRequirements || '',
+            otherRemarks: data.otherRemarks || '',
+            tenderControlPrice: data.tenderControlPrice || '--',
+            ...data
+          };
+          setProjects(prev => [finalData, ...prev]);
+        }
+        setProjectData(finalData);
+      } else {
+        setProjectData(data);
+      }
     }
     setWorkbenchStage(stageMap[stage] || 'preparation');
     setActiveTab('workbench');
@@ -141,7 +204,7 @@ export default function App() {
       case 'parsing':
         return <BidParsing onEnterWorkbench={handleEnterWorkbench} currentEnterprise={currentEnterprise} />;
       case 'inspection':
-        return <BidInspection currentEnterprise={currentEnterprise} uploadedFiles={uploadedFiles} projects={projects} />;
+        return <BidInspection currentEnterprise={currentEnterprise} uploadedFilesMapping={uploadedFilesMapping} projects={projects} />;
       case 'org':
         return <OrgStructure enterprisesList={enterprises} currentEnterprise={currentEnterprise} />;
       case 'enterprise':
@@ -154,6 +217,8 @@ export default function App() {
           currentEnterprise={currentEnterprise} 
           projects={projects}
           setProjects={setProjects}
+          uploadedFilesMapping={uploadedFilesMapping}
+          setUploadedFilesMapping={setUploadedFilesMapping}
         />;
       case 'deposit-management':
         return <SecurityDepositManagement currentEnterprise={currentEnterprise} projects={projects} />;
@@ -162,7 +227,7 @@ export default function App() {
       case 'other-materials':
         return <OtherProjectMaterials currentEnterprise={currentEnterprise} projects={projects} />;
       case 'personal-center':
-        return <PersonalCenter currentEnterprise={currentEnterprise} />;
+        return <PersonalCenter currentEnterprise={currentEnterprise} profile={profile} setProfile={setProfile} />;
       default:
         return (
           <div className="flex flex-col items-center justify-center h-[60vh] text-slate-400 space-y-4">
@@ -225,6 +290,7 @@ export default function App() {
             localStorage.removeItem('isLoggedIn');
           }}
           onAddEnterprise={handleAddEnterprise}
+          profile={profile}
         />
         <main className="flex-1 overflow-y-auto p-8 [scrollbar-gutter:stable]">
           <div className="max-w-[1600px] mx-auto w-full">

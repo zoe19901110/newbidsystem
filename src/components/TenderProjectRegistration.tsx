@@ -33,13 +33,17 @@ interface TenderProjectRegistrationProps {
   currentEnterprise?: { id: string; name: string };
   projects: any[];
   setProjects: React.Dispatch<React.SetStateAction<any[]>>;
+  uploadedFilesMapping: Record<string, Record<string, boolean>>;
+  setUploadedFilesMapping: React.Dispatch<React.SetStateAction<Record<string, Record<string, boolean>>>>;
 }
 
 const TenderProjectRegistration: React.FC<TenderProjectRegistrationProps> = ({ 
   onEnterWorkbench, 
   currentEnterprise,
   projects,
-  setProjects
+  setProjects,
+  uploadedFilesMapping,
+  setUploadedFilesMapping
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -47,10 +51,11 @@ const TenderProjectRegistration: React.FC<TenderProjectRegistrationProps> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAnalyzed, setIsAnalyzed] = useState(false);
-  const [isTenderUploaded, setIsTenderUploaded] = useState(false);
   const [hasAttemptedSave, setHasAttemptedSave] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState<{ message: string, onConfirm: () => void } | null>(null);
   
+  const currentProjectUploadedFiles = editingId ? (uploadedFilesMapping[editingId] || {}) : {};
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -97,7 +102,16 @@ const TenderProjectRegistration: React.FC<TenderProjectRegistrationProps> = ({
       });
       setIsAnalyzing(false);
       setIsAnalyzed(true);
-      setIsTenderUploaded(isSpecialFormat); // Only auto-fill if ZF or CF
+      
+      if (isSpecialFormat && editingId) {
+        setUploadedFilesMapping(prev => ({
+          ...prev,
+          [editingId]: {
+            ...(prev[editingId] || {}),
+            'tender-doc': true
+          }
+        }));
+      }
     }, 2500);
   };
 
@@ -110,7 +124,6 @@ const TenderProjectRegistration: React.FC<TenderProjectRegistrationProps> = ({
     setTimeout(() => {
       setIsAnalyzing(false);
       setIsAnalyzed(false);
-      setIsTenderUploaded(false);
       setIsEditing(false);
       setEditingId(null);
       setHasAttemptedSave(false);
@@ -346,14 +359,30 @@ const TenderProjectRegistration: React.FC<TenderProjectRegistrationProps> = ({
             <input 
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              max={endDate || undefined}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (endDate && val > endDate) {
+                  alert('开始日期不能晚于结束日期');
+                  return;
+                }
+                setStartDate(val);
+              }}
               className="bg-transparent border-none outline-none text-sm text-slate-600 font-medium py-1 w-32"
             />
             <span className="text-slate-400 text-xs">至</span>
             <input 
               type="date"
               value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
+              min={startDate || undefined}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (startDate && val < startDate) {
+                  alert('结束日期不能早于开始日期');
+                  return;
+                }
+                setEndDate(val);
+              }}
               className="bg-transparent border-none outline-none text-sm text-slate-600 font-medium py-1 w-32"
             />
           </div>
@@ -832,29 +861,45 @@ const TenderProjectRegistration: React.FC<TenderProjectRegistrationProps> = ({
                     </h5>
                     <div className="grid grid-cols-3 gap-4">
                       {[
-                        { label: '招标文件', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
-                        { label: '招标清单', icon: FileText, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-                        { label: '控制价清单', icon: FileText, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                      ].map((file, i) => (
-                        <div key={i} className={`p-4 rounded-2xl border border-slate-100 transition-all group cursor-pointer border-dashed border-2 ${
-                          file.label === '招标文件' && isTenderUploaded ? 'bg-green-50 border-green-200' : 'bg-slate-50 hover:border-primary/30 hover:bg-white'
-                        }`}>
-                          <div className="flex items-center gap-3 mb-2">
-                            <div className={`size-10 rounded-xl flex items-center justify-center ${
-                              file.label === '招标文件' && isTenderUploaded ? 'bg-green-100 text-green-600' : `${file.bg} ${file.color}`
-                            } shadow-sm group-hover:scale-110 transition-transform`}>
-                              <file.icon size={20} />
+                        { id: 'tender-doc', label: '招标文件', icon: FileText, color: 'text-blue-600', bg: 'bg-blue-50' },
+                        { id: 'tender-list', label: '招标清单', icon: FileText, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                        { id: 'tender-price', label: '控制价清单', icon: FileText, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+                      ].map((file, i) => {
+                        const isUploaded = currentProjectUploadedFiles[file.id];
+                        return (
+                          <div 
+                            key={i} 
+                            onClick={() => {
+                              if (!isEditing) return;
+                              setUploadedFilesMapping(prev => ({
+                                ...prev,
+                                [editingId!]: {
+                                  ...(prev[editingId!] || {}),
+                                  [file.id]: !isUploaded
+                                }
+                              }));
+                            }}
+                            className={`p-4 rounded-2xl border border-slate-100 transition-all group cursor-pointer border-dashed border-2 ${
+                              isUploaded ? 'bg-green-50 border-green-200' : 'bg-slate-50 hover:border-primary/30 hover:bg-white'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className={`size-10 rounded-xl flex items-center justify-center ${
+                                isUploaded ? 'bg-green-100 text-green-600' : `${file.bg} ${file.color}`
+                              } shadow-sm group-hover:scale-110 transition-transform`}>
+                                <file.icon size={20} />
+                              </div>
+                              <span className="text-sm font-bold text-slate-700">{file.label}</span>
                             </div>
-                            <span className="text-sm font-bold text-slate-700">{file.label}</span>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] text-slate-400 font-medium italic">
+                                {isUploaded ? `${file.label}已上传` : '点击上传附件'}
+                              </span>
+                              {!isUploaded && <Plus size={14} className="text-primary" />}
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] text-slate-400 font-medium italic">
-                              {file.label === '招标文件' && isTenderUploaded ? '招标文件已自动导入' : '点击上传附件'}
-                            </span>
-                            {!(file.label === '招标文件' && isTenderUploaded) && <Plus size={14} className="text-primary" />}
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
 

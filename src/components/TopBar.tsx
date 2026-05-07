@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, ChevronDown, User, LogOut, Building2, Plus, X, CheckCircle2 } from 'lucide-react';
+import { ChevronDown, User, LogOut, Building2, Plus, X, CheckCircle2, Network } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface TopBarProps {
@@ -9,9 +9,10 @@ interface TopBarProps {
   setCurrentEnterprise: (enterprise: { id: string; name: string }) => void;
   onLogout: () => void;
   onAddEnterprise?: (name: string) => string; // Returns the new ID
+  profile?: { name: string; nickname: string; email: string; phone: string };
 }
 
-const TopBar: React.FC<TopBarProps> = ({ setActiveTab, enterprises, currentEnterprise, setCurrentEnterprise, onLogout, onAddEnterprise }) => {
+const TopBar: React.FC<TopBarProps> = ({ setActiveTab, enterprises, currentEnterprise, setCurrentEnterprise, onLogout, onAddEnterprise, profile }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showEntSelect, setShowEntSelect] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -86,15 +87,15 @@ const TopBar: React.FC<TopBarProps> = ({ setActiveTab, enterprises, currentEnter
       </div>
 
       <div className="flex items-center gap-4">
-        <button className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
-          <Bell size={20} />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
-        </button>
         <div className="h-8 w-px bg-slate-200 mx-2"></div>
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <p className="text-sm font-semibold">陈经理</p>
-            <p className="text-[10px] text-slate-500 uppercase font-bold">超级管理员</p>
+            <p className="text-sm font-semibold">
+              {currentEnterprise.id === 'personal' ? (profile?.nickname || '个人账户') : (profile?.name || '陈经理')}
+            </p>
+            <p className="text-[10px] text-slate-500 uppercase font-bold">
+              {currentEnterprise.id === 'personal' ? '个人身份' : '超级管理员'}
+            </p>
           </div>
           <div className="relative" ref={dropdownRef}>
             <button 
@@ -119,8 +120,10 @@ const TopBar: React.FC<TopBarProps> = ({ setActiveTab, enterprises, currentEnter
                     alt="User avatar"
                   />
                   <div>
-                    <p className="font-semibold text-slate-900">陈经理</p>
-                    <p className="text-xs text-slate-500">登录账号: 13800138000</p>
+                    <p className="font-semibold text-slate-900">
+                      {currentEnterprise.id === 'personal' ? (profile?.nickname || '个人账户') : (profile?.name || '陈经理')}
+                    </p>
+                    <p className="text-xs text-slate-500">登录账号: {profile?.phone || '13800138000'}</p>
                   </div>
                 </div>
 
@@ -131,6 +134,13 @@ const TopBar: React.FC<TopBarProps> = ({ setActiveTab, enterprises, currentEnter
                   >
                     <User size={16} />
                     个人中心
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('org'); setShowDropdown(false); }}
+                    className="flex items-center gap-3 w-full px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 rounded-md"
+                  >
+                    <Network size={16} />
+                    组织架构
                   </button>
                 </div>
 

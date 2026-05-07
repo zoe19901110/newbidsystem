@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   PlusCircle, 
   Briefcase, 
@@ -43,12 +43,40 @@ interface DashboardProps {
   projects: any[];
 }
 
+const formatCountdown = (openingTime: string, now: Date) => {
+  if (!openingTime || openingTime === '--') return '待定';
+  
+  try {
+    const target = new Date(openingTime).getTime();
+    const current = now.getTime();
+    const diff = target - current;
+    
+    if (isNaN(target)) return '待定';
+    if (diff <= 0) return '已结束';
+    
+    const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const h = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const m = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    const s = Math.floor((diff % (1000 * 60)) / 1000);
+    
+    return `${d.toString().padStart(2, '0')}天 ${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  } catch (e) {
+    return '待定';
+  }
+};
+
 const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, onEnterWorkbench, currentEnterprise, projects }) => {
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAnalyzed, setIsAnalyzed] = useState(false);
   const [isTenderUploaded, setIsTenderUploaded] = useState(false);
+  const [now, setNow] = useState(new Date());
   
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(8);
@@ -69,17 +97,57 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, onEnterWorkbench, c
     otherRemarks: ''
   });
 
-  const displayProjects = projects.map(p => ({
-    id: p.id,
-    name: p.name,
-    status: p.status === '放弃投标' ? '已暂停' : (p.status === '已完成' ? '已开标' : '投标中'),
-    statusColor: p.status === '放弃投标' ? 'bg-red-50 text-red-600' : (p.status === '已完成' ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-primary'),
-    deadline: p.bidOpeningTime,
-    countdown: p.countdown || '08天 04:12:05', // 确保显示详细倒计时
-    icon: p.status === '放弃投标' ? Ban : (p.status === '已完成' ? CheckCircle2 : Briefcase),
-    iconBg: p.status === '放弃投标' ? 'bg-red-50 text-red-600' : (p.status === '已完成' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-primary'),
-    isPaused: p.status === '放弃投标'
-  }));
+  const sortedProjects = [...projects].sort((a, b) => {
+    const getProjectInfo = (p: any) => {
+      const timeStr = p.bidOpeningTime || p.deadline || p.openingTime;
+      const openingDate = (timeStr && timeStr !== '--') ? new Date(timeStr) : null;
+      const isActuallyOpened = openingDate && openingDate.getTime() <= now.getTime();
+      const status = p.status === '放弃投标' ? '已暂停' : (p.status === '已完成' || isActuallyOpened ? '已开标' : '投标中');
+      
+      // Priority: Bidding (0) > Paused (1) > Opened (2)
+      let priority = 0;
+      if (status === '已暂停') priority = 1;
+      if (status === '已开标') priority = 2;
+      
+      const timeScore = (openingDate && !isNaN(openingDate.getTime())) ? openingDate.getTime() : 2e15;
+      
+      return { priority, timeScore, diff: openingDate ? openingDate.getTime() - now.getTime() : 0 };
+    };
+
+    const infoA = getProjectInfo(a);
+    const infoB = getProjectInfo(b);
+
+    if (infoA.priority !== infoB.priority) {
+      return infoA.priority - infoB.priority;
+    }
+
+    // Within same priority, sort by proximity to opening time
+    if (infoA.priority === 0) {
+      // Bidding: soonest opening first
+      return infoA.timeScore - infoB.timeScore;
+    } else {
+      // Opened/Paused: most recent first
+      return infoB.timeScore - infoA.timeScore;
+    }
+  });
+
+  const displayProjects = sortedProjects.map(p => {
+    const openingTimeStr = p.bidOpeningTime || p.deadline || p.openingTime;
+    const isActuallyOpened = openingTimeStr && openingTimeStr !== '--' && new Date(openingTimeStr).getTime() <= now.getTime();
+    const status = p.status === '放弃投标' ? '已暂停' : (p.status === '已完成' || isActuallyOpened ? '已开标' : '投标中');
+    
+    return {
+      id: p.id,
+      name: p.name,
+      status: status,
+      statusColor: p.status === '放弃投标' ? 'bg-red-50 text-red-600' : (status === '已开标' ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-primary'),
+      deadline: openingTimeStr || '--',
+      countdown: status === '已开标' ? '已结束' : formatCountdown(openingTimeStr, now),
+      icon: p.status === '放弃投标' ? Ban : (status === '已开标' ? CheckCircle2 : Briefcase),
+      iconBg: p.status === '放弃投标' ? 'bg-red-50 text-red-600' : (status === '已开标' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-primary'),
+      isPaused: p.status === '放弃投标'
+    };
+  });
 
   const handleFileUpload = () => {
     setIsAnalyzing(true);
@@ -239,9 +307,9 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, onEnterWorkbench, c
                     <div className={`size-12 rounded-xl ${project.iconBg} flex items-center justify-center shrink-0`}>
                       <project.icon size={24} />
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h4 className="font-bold text-slate-900 group-hover:text-primary transition-colors">{project.name}</h4>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <h4 className="font-bold text-slate-900 group-hover:text-primary transition-colors break-all line-clamp-2 w-[400px]" title={project.name}>{project.name}</h4>
                         {project.status && (
                           <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
                             project.status === '进行中' ? 'bg-blue-50 text-blue-600' : 
@@ -260,7 +328,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, onEnterWorkbench, c
                       <div className="flex items-center gap-3 mt-2">
                         <span className="text-slate-400 text-xs flex items-center gap-1">
                           <Clock size={14} />
-                          {project.deadline} 开标
+                          {project.deadline && project.deadline !== '--' ? `${project.deadline} 开标` : '开标时间：待定'}
                         </span>
                       </div>
                     </div>
@@ -268,7 +336,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, onEnterWorkbench, c
                   <div className="flex items-center gap-8 self-center">
                     <div className="text-right">
                       <p className="text-xs text-slate-400 mb-1">开标倒计时</p>
-                      <p className={`text-lg font-bold tabular-nums ${['1', '2', '3'].includes(project.id) ? 'text-red-500' : 'text-slate-700'}`}>{project.countdown || '08天 04:12:05'}</p>
+                      <p className={`text-lg font-bold tabular-nums ${project.countdown !== '已结束' && project.countdown !== '待定' && project.countdown.startsWith('00') ? 'text-red-500' : 'text-slate-700'}`}>{project.countdown}</p>
                     </div>
                     <button 
                       onClick={(e) => {
