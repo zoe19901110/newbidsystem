@@ -31,7 +31,8 @@ import {
   BrainCircuit,
   ChevronDown,
   Ban,
-  Wrench
+  Wrench,
+  TrendingUp,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Pagination from './Pagination';
@@ -71,12 +72,51 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, onEnterWorkbench, c
   const [isAnalyzed, setIsAnalyzed] = useState(false);
   const [isTenderUploaded, setIsTenderUploaded] = useState(false);
   const [now, setNow] = useState(new Date());
+  const [reminders, setReminders] = useState<Record<number, { text: string; type: 'system' | 'manual' }[]>>({
+    22: [{ text: '招标文件最终评审会议', type: 'system' }],
+    25: [{ text: '智慧城市管理平台开标', type: 'system' }]
+  });
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<number>(22);
+  const [newReminderText, setNewReminderText] = useState('');
+  const [isAddingReminder, setIsAddingReminder] = useState(false);
+  const [calendarYear, setCalendarYear] = useState(2026);
+  const [calendarMonth, setCalendarMonth] = useState(4);
+  const [showCalendarPicker, setShowCalendarPicker] = useState(false);
+  
+  const getDaysInMonth = (year: number, month: number) => {
+    return new Date(year, month, 0).getDate();
+  };
+
+  const getFirstDayOfMonth = (year: number, month: number) => {
+    const day = new Date(year, month - 1, 1).getDay();
+    return day === 0 ? 6 : day - 1; // 周一为0，周日为6
+  };
   
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  const handleAddReminder = () => {
+    if (!newReminderText.trim()) return;
+    setReminders(prev => ({
+      ...prev,
+      [selectedCalendarDate]: [...(prev[selectedCalendarDate] || []), { text: newReminderText, type: 'manual' }]
+    }));
+    setNewReminderText('');
+    setIsAddingReminder(false);
+  };
+
+  const [taskAlerts, setTaskAlerts] = useState([
+    { id: 1, title: '2026年新能源充电桩部署规划咨询及配套设施建设项目 - 投标保证金缴纳截止', time: '2026-04-10 17:00', type: '保证金', daysLeft: 1 },
+    { id: 2, title: '公共图书馆数字化二期项目及馆藏资源扩容方案 - 投标文件递交截止', time: '2026-04-11 09:30', type: '投标截止', daysLeft: 2 },
+    { id: 3, title: '城市轨道交通信号维护服务年度框架协议 - 保证金缴纳截止', time: '2026-04-12 16:00', type: '保证金', daysLeft: 3 },
+    { id: 4, title: '社区养老服务平台开发与智慧医疗集成项目 - 投标文件递交截止', time: '2026-04-12 10:00', type: '投标截止', daysLeft: 3 },
+  ]);
+
+  const dismissAlert = (id: number) => {
+    setTaskAlerts(prev => prev.filter(alert => alert.id !== id));
+  };
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(8);
@@ -377,10 +417,102 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, onEnterWorkbench, c
         <div className="col-span-4 space-y-8">
           {/* Calendar Card */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-lg font-bold">投标日历</h3>
-              <p className="text-sm font-medium text-primary">2026年04月</p>
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between relative">
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-bold">投标日历</h3>
+                <button 
+                  onClick={() => setIsAddingReminder(!isAddingReminder)}
+                  className="p-1 hover:bg-slate-100 rounded-full text-primary transition-colors"
+                  title="添加提醒"
+                >
+                  <Plus size={18} />
+                </button>
+              </div>
+              <button 
+                onClick={() => setShowCalendarPicker(!showCalendarPicker)}
+                className="flex items-center gap-1 text-sm font-bold text-primary hover:bg-blue-50 px-2 py-1 rounded-lg transition-colors group"
+              >
+                <span>{calendarYear}年{calendarMonth.toString().padStart(2, '0')}月</span>
+                <ChevronDown size={14} className={`transition-transform duration-200 ${showCalendarPicker ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showCalendarPicker && (
+                <motion.div 
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute top-full right-4 mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 p-4 min-w-[240px]"
+                >
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase ml-2 tracking-widest">选择年份</p>
+                      <div className="max-h-40 overflow-y-auto custom-scrollbar pr-1">
+                        {[2024, 2025, 2026, 2027, 2028].map(year => (
+                          <button
+                            key={year}
+                            onClick={() => {
+                              setCalendarYear(year);
+                            }}
+                            className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-bold transition-colors mb-1 ${calendarYear === year ? 'bg-primary text-white' : 'hover:bg-slate-50 text-slate-600'}`}
+                          >
+                            {year}年
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-[10px] font-bold text-slate-400 uppercase ml-2 tracking-widest">选择月份</p>
+                      <div className="grid grid-cols-2 gap-1">
+                        {[...Array(12)].map((_, i) => (
+                          <button
+                            key={i + 1}
+                            onClick={() => {
+                              setCalendarMonth(i + 1);
+                              setShowCalendarPicker(false);
+                            }}
+                            className={`text-center py-1.5 rounded-lg text-xs font-bold transition-colors ${calendarMonth === i + 1 ? 'bg-primary text-white' : 'hover:bg-slate-50 text-slate-600'}`}
+                          >
+                            {i + 1}月
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
             </div>
+            
+            {isAddingReminder && (
+              <div className="px-6 pt-4">
+                <div className="p-3 bg-slate-50 rounded-xl border border-slate-100 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold text-slate-500">为 {selectedCalendarDate}日 添加提醒</span>
+                    <button onClick={() => setIsAddingReminder(false)} className="text-slate-400 hover:text-slate-600">
+                      <X size={14} />
+                    </button>
+                  </div>
+                  <input 
+                    type="text"
+                    placeholder="输入提醒内容..."
+                    autoFocus
+                    value={newReminderText}
+                    onChange={(e) => setNewReminderText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleAddReminder();
+                    }}
+                    className="w-full px-3 py-2 text-xs bg-white border border-slate-200 rounded-lg outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  />
+                  <div className="flex justify-end">
+                    <button 
+                      onClick={handleAddReminder}
+                      className="px-3 py-1 bg-primary text-white text-[10px] font-bold rounded-md shadow-sm hover:bg-primary/90 transition-colors"
+                    >
+                      保存提醒
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="p-6">
               <div className="grid grid-cols-7 gap-1 text-center mb-4">
                 {['一', '二', '三', '四', '五', '六', '日'].map((day, i) => (
@@ -388,63 +520,147 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, onEnterWorkbench, c
                 ))}
               </div>
               <div className="grid grid-cols-7 gap-1">
-                {[...Array(31)].map((_, i) => {
+                {[...Array(getFirstDayOfMonth(calendarYear, calendarMonth))].map((_, i) => (
+                  <div key={`empty-${i}`} className="h-10"></div>
+                ))}
+                {[...Array(getDaysInMonth(calendarYear, calendarMonth))].map((_, i) => {
                   const day = i + 1;
-                  const isToday = day === 22;
-                  const hasEvent = day === 25;
+                  const isToday = calendarYear === 2026 && calendarMonth === 4 && day === 22;
+                  const hasReminders = reminders[day] && reminders[day].length > 0;
+                  const hasManualReminders = reminders[day]?.some(r => r.type === 'manual');
+                  const isSelected = selectedCalendarDate === day;
+
                   return (
                     <div 
                       key={day} 
-                      className={`h-10 flex items-center justify-center text-sm font-medium rounded-lg cursor-pointer transition-colors relative
-                        ${isToday ? 'bg-[#0052CC] text-white shadow-lg shadow-blue-500/20' : 'hover:bg-slate-50'}
-                        ${day > 30 ? 'text-slate-300' : ''}
-                        ${(day === 4 || day === 5 || day === 11 || day === 12 || day === 18 || day === 19 || day === 25 || day === 26) ? 'text-red-400' : ''}
+                      onClick={() => setSelectedCalendarDate(day)}
+                      className={`h-10 flex items-center justify-center text-sm font-medium rounded-lg cursor-pointer transition-all relative
+                        ${isToday ? (isSelected ? 'bg-[#0052CC] text-white shadow-lg font-black scale-110' : 'bg-blue-50 text-[#0052CC]') : (isSelected ? 'bg-slate-100 text-primary border border-primary/20 font-black' : 'hover:bg-slate-50')}
+                        ${((getFirstDayOfMonth(calendarYear, calendarMonth) + i) % 7 === 5 || (getFirstDayOfMonth(calendarYear, calendarMonth) + i) % 7 === 6) ? 'text-red-400' : ''}
                       `}
                     >
                       {day}
-                      {hasEvent && !isToday && <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-[#0052CC] rounded-full"></span>}
-                      {isToday && <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-yellow-400 rounded-full border border-white"></span>}
+                      {hasReminders && !isToday && !isSelected && (
+                        <span className={`absolute bottom-1 w-1 h-1 rounded-full ${hasManualReminders ? 'bg-yellow-400' : 'bg-primary'}`}></span>
+                      )}
+                      {hasReminders && isToday && !isSelected && <span className="absolute bottom-1 w-1 h-1 bg-white rounded-full"></span>}
                     </div>
                   );
                 })}
               </div>
-              <div className="mt-6 space-y-4">
-                <div className="flex items-start gap-3">
-                  <div className="w-1 h-10 bg-yellow-400 rounded-full shrink-0"></div>
-                  <div>
-                    <p className="text-xs font-bold">11月22日 今天</p>
-                    <p className="text-xs text-slate-500">招标文件最终评审会议</p>
-                  </div>
+              
+              <div className="mt-6 space-y-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">{selectedCalendarDate}日 提醒事项</span>
                 </div>
-                <div className="flex items-start gap-3">
-                  <div className="w-1 h-10 bg-[#0052CC] rounded-full shrink-0"></div>
-                  <div>
-                    <p className="text-xs font-bold text-primary">11月25日 关键节点</p>
-                    <p className="text-xs text-slate-500">智慧城市管理平台开标</p>
+                
+                {reminders[selectedCalendarDate] && reminders[selectedCalendarDate].length > 0 ? (
+                  reminders[selectedCalendarDate].map((rem, idx) => (
+                    <motion.div 
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      key={idx} 
+                      className="flex items-start gap-3 group"
+                    >
+                      <div className={`w-1 h-10 ${rem.type === 'manual' ? 'bg-yellow-400' : (selectedCalendarDate === 22 ? 'bg-yellow-400' : 'bg-primary')} rounded-full shrink-0`}></div>
+                      <div className="flex-1">
+                        <p className="text-xs font-bold">{selectedCalendarDate === 22 ? `4月${selectedCalendarDate}日 今天` : `4月${selectedCalendarDate}日`}</p>
+                        <p className="text-xs text-slate-500 line-clamp-1">{rem.text}</p>
+                      </div>
+                      {rem.type === 'manual' && (
+                        <button 
+                          onClick={() => {
+                            setReminders(prev => ({
+                              ...prev,
+                              [selectedCalendarDate]: prev[selectedCalendarDate].filter((_, i) => i !== idx)
+                            }));
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1 hover:text-red-500 transition-all"
+                        >
+                          <X size={12} />
+                        </button>
+                      )}
+                    </motion.div>
+                  ))
+                ) : (
+                  <div className="py-4 text-center border border-dashed border-slate-100 rounded-xl">
+                    <p className="text-[10px] text-slate-400 italic">当日暂无提醒项目</p>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
 
           {/* Task Alerts */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center gap-2">
-              <Bell className="text-orange-500" size={20} />
-              <h3 className="text-lg font-bold">关键任务提醒 <span className="ml-2 text-xs font-normal text-slate-400 underline cursor-pointer">最近3天内</span></h3>
-            </div>
-            <div className="p-6 space-y-4">
-              {alerts.map((alert) => (
-                <div key={alert.id} className={`flex items-center gap-4 p-4 rounded-xl border ${alert.type === 'urgent' ? 'border-orange-100 bg-orange-50/30' : 'border-slate-100'}`}>
-                  <div className={`size-2 rounded-full ${alert.type === 'urgent' ? 'bg-orange-500 animate-pulse' : alert.type === 'success' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
-                  <p className="flex-1 text-sm font-medium text-slate-700">
-                    {alert.title}
-                  </p>
-                  <span className={`text-xs font-bold px-2 py-1 rounded-md ${alert.type === 'urgent' ? 'text-orange-600 bg-white' : 'text-slate-400 italic'}`}>
-                    {alert.priority || alert.time}
-                  </span>
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[400px]">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="p-2 bg-slate-50 rounded-xl select-none group-hover:bg-slate-100 transition-colors">
+                  <Bell size={20} className="text-slate-500" />
                 </div>
-              ))}
+                <h3 className="text-lg font-bold">关键任务提醒</h3>
+                <span className="text-[10px] px-1.5 py-0.5 bg-slate-100 text-slate-600 rounded-full font-bold">最近3天内到期</span>
+              </div>
+            </div>
+            <div className="p-6 overflow-y-auto custom-scrollbar flex-1">
+              <div className="space-y-3">
+                <AnimatePresence mode="popLayout">
+                  {taskAlerts.length > 0 ? (
+                    taskAlerts.map((task, i) => (
+                      <motion.div 
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, scale: 0.95 }}
+                        transition={{ duration: 0.2 }}
+                        layout
+                        key={task.id} 
+                        className="p-4 rounded-xl border border-slate-100 bg-slate-50/30 hover:bg-white hover:shadow-md hover:border-primary/20 transition-all group relative"
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex items-start gap-3 flex-1 min-w-0">
+                            <div className="size-2 rounded-full bg-slate-400 mt-1.5 shrink-0" />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold shrink-0 ${task.type === '保证金' ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-blue-50 text-blue-600 border border-blue-100'}`}>
+                                  {task.type}
+                                </span>
+                                <p className="text-sm font-black text-slate-700 truncate leading-snug" title={task.title}>
+                                  {task.title}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <span className="text-[11px] text-slate-400 flex items-center gap-1 font-medium">
+                                  <CalendarIcon size={12} />
+                                  截止日期: {task.time}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-2 shrink-0">
+                            <button 
+                              onClick={() => dismissAlert(task.id)}
+                              className="opacity-0 group-hover:opacity-100 p-1 hover:bg-slate-100 hover:text-slate-600 rounded-md transition-all text-slate-300"
+                              title="关闭提醒"
+                            >
+                              <X size={14} />
+                            </button>
+                            <div className="text-right">
+                              <p className="text-xs font-black text-slate-600 tracking-tight">剩余 <span className="text-rose-500">{task.daysLeft}</span> 天</p>
+                            </div>
+                          </div>
+                        </div>
+                      </motion.div>
+                    ))
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-12 text-slate-400">
+                      <div className="size-12 rounded-full bg-slate-50 flex items-center justify-center mb-3">
+                        <Bell size={20} className="text-slate-200" />
+                      </div>
+                      <p className="text-xs font-medium">暂无紧急任务提醒</p>
+                    </div>
+                  )}
+                </AnimatePresence>
+              </div>
             </div>
           </div>
         </div>

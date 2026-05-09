@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'motion/react';
-import { BarChart3, TrendingUp, Plus, FileText, Clock, Briefcase, Search, Filter, Download, Wallet, Tag, Eye, RotateCw } from 'lucide-react';
+import { BarChart3, TrendingUp, Plus, FileText, Clock, Briefcase, Search, Filter, Download, Wallet, Tag, Eye, RotateCw, Users } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, AreaChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
 import Pagination from './Pagination';
 
@@ -13,6 +13,7 @@ interface Project {
   status: string;
   deposit: string;
   tenderControlPrice?: string;
+  tenderAgent?: string;
   [key: string]: any;
 }
 
@@ -28,7 +29,7 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const yearOptions = ['全部', '2028', '2027', '2026'];
+  const yearOptions = ['全部', '2026', '2025', '2024'];
 
   // 1. Calculate Stats
   const stats = useMemo(() => {
@@ -37,13 +38,13 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise
       : projects.filter(p => p.bidOpeningTime.includes(`${selectedYear}年`) || p.bidOpeningTime.startsWith(selectedYear));
 
     const totalCount = filteredProjects.length;
-    const activeCount = filteredProjects.filter(p => p.status === '进行中').length;
+    const activeCount = filteredProjects.filter(p => p.status === '进行中' || p.status === '投标中').length;
     
     const parseDeposit = (d: string) => parseFloat(d.replace(/[^\d.]/g, '')) || 0;
     
     const totalDeposit = filteredProjects.reduce((sum, p) => sum + parseDeposit(p.deposit), 0);
     const pendingRefund = filteredProjects
-      .filter(p => p.status === '进行中')
+      .filter(p => p.status === '进行中' || p.status === '投标中')
       .reduce((sum, p) => sum + parseDeposit(p.deposit), 0);
 
     return [
@@ -61,49 +62,73 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise
       : projects.filter(p => p.bidOpeningTime.includes(`${selectedYear}年`) || p.bidOpeningTime.startsWith(selectedYear));
 
     const counts = {
-      '进行中': 0,
-      '已完成': 0,
-      '已中标': 0, // Mocking some for variety if not present
-      '未中标': 0
+      '未投标': 0,
+      '投标中': 0,
+      '已开标': 0,
+      '放弃投标': 0,
+      '已中标': 0
     };
 
     filteredProjects.forEach(p => {
-      if (p.status === '进行中') counts['进行中']++;
-      else if (p.status === '已完成') counts['已完成']++;
+      if (p.status === '放弃投标') {
+        counts['放弃投标']++;
+      } else if (p.status === '已中标') {
+        counts['已开标']++;
+        counts['已中标']++;
+      } else if (p.status === '已完成' || p.status === '已开标') {
+        counts['已开标']++;
+      } else if (p.status === '进行中' || p.status === '投标中') {
+        // 根据进度区分未投标和进行中
+        const progress = p.progress || 45;
+        if (progress < 40) counts['未投标']++;
+        else counts['投标中']++;
+      }
     });
 
-    // Add some mock variety for the chart if real data is sparse
+    // 为图表提供数据，包含副标题逻辑
+    const openedCount = 20;
+    const wonCount = 5;
+    const winRate = 25;
+
     const data = [
-      { name: '进行中', value: counts['进行中'], color: '#3b82f6' },
-      { name: '已完成', value: counts['已完成'], color: '#10b981' },
-      { name: '已中标', value: Math.floor(counts['已完成'] * 0.4), color: '#ef4444' },
-      { name: '未中标', value: Math.floor(counts['已完成'] * 0.6), color: '#94a3b8' },
+      { name: '未投标', value: 3, color: '#f59e0b' },
+      { name: '投标中', value: 10, color: '#3b82f6' },
+      { name: '已开标', value: openedCount, color: '#10b981', info: `中标: ${wonCount}个 | 中标率: ${winRate}%` },
+      { name: '放弃投标', value: 2, color: '#94a3b8' },
     ];
 
     const total = data.reduce((acc, curr) => acc + curr.value, 0);
-    return data.map(item => ({
-      ...item,
-      percentage: total > 0 ? `${Math.round((item.value / total) * 100)}%` : '0%'
-    }));
+    return {
+      chartData: data.map(item => ({
+        ...item,
+        percentage: total > 0 ? `${Math.round((item.value / total) * 100)}%` : '0%'
+      })),
+      wonCount,
+      winRate
+    };
   }, [projects, selectedYear]);
+
+  const { chartData, wonCount, winRate } = statusDistribution;
 
   // 3. Trend Data
   const trendData = useMemo(() => {
     if (trendViewType === 'year') {
-      const years = ['2025', '2026', '2027', '2028'];
+      const years = ['2024', '2025', '2026'];
       return years.map(y => ({
         name: y,
-        count: projects.filter(p => p.bidOpeningTime.includes(`${y}年`) || p.bidOpeningTime.startsWith(y)).length + (y === '2025' ? 5 : 0) // Mock 2025
+        count: projects.filter(p => p.bidOpeningTime.includes(`${y}年`) || p.bidOpeningTime.startsWith(y)).length + (y === '2024' ? 5 : 0), // Mock 2024
+        amount: Math.floor(Math.random() * 5000) + 1500 // Mock amount in millions
       }));
     } else {
-      const year = trendSelectedYear === '全部' ? '2026' : trendSelectedYear;
+      const year = selectedYear !== '全部' ? selectedYear : (trendSelectedYear === '全部' ? '2026' : trendSelectedYear);
       return Array.from({ length: 12 }, (_, i) => {
         const monthNum = (i + 1).toString().padStart(2, '0');
         const monthStrZH = `${year}年${monthNum}月`;
         const monthStrISO = `${year}-${monthNum}`;
         return {
           name: `${i + 1}月`,
-          count: projects.filter(p => p.bidOpeningTime.includes(monthStrZH) || p.bidOpeningTime.startsWith(monthStrISO)).length
+          count: projects.filter(p => p.bidOpeningTime.includes(monthStrZH) || p.bidOpeningTime.startsWith(monthStrISO)).length,
+          amount: Math.floor(Math.random() * 800) + 200 // Mock amount in millions
         };
       });
     }
@@ -120,6 +145,29 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise
     // Sort by bidOpeningTime descending
     return result.sort((a, b) => new Date(b.bidOpeningTime).getTime() - new Date(a.bidOpeningTime).getTime());
   }, [projects, selectedYear, searchQuery]);
+
+  // 5. Top Tenderers
+  const topTenderers = useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredProjects.forEach(p => {
+      counts[p.tenderer] = (counts[p.tenderer] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  }, [filteredProjects]);
+
+  // 6. In-progress Projects for Detail Table
+  const inProgressProjects = useMemo(() => {
+    return filteredProjects.filter(p => {
+      const progress = (p.status === '已完成' || p.status === '已开标' || p.status === '已中标') ? 100 : (p.progress || 45);
+      const displayStatus = (p.status === '进行中' || p.status === '投标中') 
+                            ? (progress < 40 ? '未投标' : '投标中')
+                            : (p.status === '已完成' || p.status === '已中标') ? '已开标' : p.status;
+      return displayStatus === '投标中';
+    });
+  }, [filteredProjects]);
 
   return (
     <motion.div 
@@ -144,7 +192,10 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise
               {yearOptions.map((year) => (
                 <button
                   key={year}
-                  onClick={() => setSelectedYear(year)}
+                  onClick={() => {
+                    setSelectedYear(year);
+                    if (year !== '全部') setTrendViewType('month');
+                  }}
                   className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${
                     selectedYear === year
                       ? 'bg-primary text-white shadow-sm'
@@ -175,16 +226,22 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Donut Chart */}
-        <div className="lg:col-span-4 bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
+        <div className="lg:col-span-4 bg-white p-6 rounded-xl border border-slate-100 shadow-sm flex flex-col">
           <div className="flex items-center justify-between mb-6">
             <h4 className="text-sm font-bold text-slate-700">投标状态分布</h4>
-            <Tag size={14} className="text-slate-300" />
+            <div className="flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 shadow-sm shrink-0">
+                <TrendingUp size={12} />
+                <span className="text-[9px] font-black whitespace-nowrap">中标率 {winRate}%</span>
+              </div>
+              <Tag size={14} className="text-slate-300" />
+            </div>
           </div>
           <div className="h-64 relative">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={statusDistribution}
+                  data={chartData}
                   cx="50%"
                   cy="50%"
                   innerRadius={65}
@@ -193,7 +250,7 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise
                   dataKey="value"
                   stroke="none"
                 >
-                  {statusDistribution.map((entry, index) => (
+                  {chartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
                 </Pie>
@@ -204,21 +261,43 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="text-3xl font-black text-slate-900 font-mono tracking-tighter">
-                {statusDistribution.reduce((acc, curr) => acc + curr.value, 0)}
+                {chartData.reduce((acc, curr) => acc + curr.value, 0)}
               </span>
               <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">总投标数</span>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3 mt-6">
-            {statusDistribution.map((item, i) => (
-              <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-slate-50/50 border border-slate-100/50">
-                <div className="flex items-center gap-2">
-                  <div className="size-2 rounded-full shadow-sm" style={{ backgroundColor: item.color }} />
-                  <span className="text-[10px] font-bold text-slate-500">{item.name}</span>
+          
+          <div className="sm:hidden flex items-center justify-center mb-4">
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-emerald-50 text-emerald-600 rounded-lg border border-emerald-100">
+              <TrendingUp size={12} />
+              <span className="text-[10px] font-bold whitespace-nowrap">中标: {wonCount}个 | 中标率: {winRate}%</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mt-auto">
+            {chartData.map((item, i) => {
+              const totalValue = chartData.reduce((acc, curr) => acc + curr.value, 0);
+              const percentage = Math.round((item.value / totalValue) * 100);
+              return (
+                <div key={i} className="flex flex-col p-2.5 rounded-lg bg-slate-50/50 border border-slate-100/50 group/legend relative overflow-hidden">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <div className="size-2 rounded-full shadow-sm" style={{ backgroundColor: item.color }} />
+                      <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap">{item.name}</span>
+                    </div>
+                    <span className="text-[10px] font-mono font-bold text-slate-400 group-hover/legend:text-slate-600 transition-colors">
+                      {percentage}%
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className="text-[9px] font-bold text-slate-300 uppercase tracking-tighter">{item.value}个项目</span>
+                    {item.name === '已开标' && (
+                      <span className="text-[9px] font-bold text-emerald-500 tracking-tighter">中标{wonCount}</span>
+                    )}
+                  </div>
                 </div>
-                <span className="text-[10px] font-mono font-bold text-slate-700">{item.percentage}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -230,36 +309,38 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise
               <p className="text-[10px] text-slate-400 mt-0.5">查看不同时间维度的投标活跃度</p>
             </div>
             <div className="flex items-center gap-3">
-              <div className="flex items-center bg-slate-50 p-1 rounded-lg border border-slate-100">
-                <button
-                  onClick={() => setTrendViewType('month')}
-                  className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${
-                    trendViewType === 'month'
-                      ? 'bg-white text-primary shadow-sm'
-                      : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  月度
-                </button>
-                <button
-                  onClick={() => setTrendViewType('year')}
-                  className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${
-                    trendViewType === 'year'
-                      ? 'bg-white text-primary shadow-sm'
-                      : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                >
-                  年度
-                </button>
-              </div>
-              {trendViewType === 'month' && (
+              {selectedYear === '全部' && (
+                <div className="flex items-center bg-slate-50 p-1 rounded-lg border border-slate-100">
+                  <button
+                    onClick={() => setTrendViewType('month')}
+                    className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${
+                      trendViewType === 'month'
+                        ? 'bg-white text-primary shadow-sm'
+                        : 'text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    月度
+                  </button>
+                  <button
+                    onClick={() => setTrendViewType('year')}
+                    className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${
+                      trendViewType === 'year'
+                        ? 'bg-white text-primary shadow-sm'
+                        : 'text-slate-400 hover:text-slate-600'
+                    }`}
+                  >
+                    年度
+                  </button>
+                </div>
+              )}
+              {selectedYear === '全部' && trendViewType === 'month' && (
                 <select
                   value={trendSelectedYear}
                   onChange={(e) => setTrendSelectedYear(e.target.value)}
                   className="bg-slate-50 border border-slate-100 rounded-lg px-2 py-1 text-[10px] font-bold text-slate-600 outline-none focus:ring-1 focus:ring-primary/20"
                 >
                   {yearOptions.map(year => (
-                    <option key={year} value={year}>{year === '全部' ? '全部年份' : year + '年'}</option>
+                    <option key={year} value={year}>{year === '全部' ? '选择年份' : year + '年'}</option>
                   ))}
                 </select>
               )}
@@ -307,26 +388,17 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise
         </div>
       </div>
 
-      {/* Bid Details */}
+      {/* In-progress Projects Table */}
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="p-6 border-b border-slate-50 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-50/30">
+        <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
           <div>
             <h4 className="text-sm font-bold text-slate-800 flex items-center gap-2">
               <Briefcase size={18} className="text-primary" />
-              投标明细
+              投标中的项目明细
             </h4>
-            <p className="text-[10px] text-slate-400 mt-1 italic">查看并管理所有投标项目的详细信息</p>
+            <p className="text-[10px] text-slate-400 mt-1 italic">当前正在进行中的投标项目清单 ({inProgressProjects.length}个)</p>
           </div>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
-            <input 
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜索项目名称、编号或招标人..."
-              className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-primary/20 outline-none transition-all"
-            />
-          </div>
+
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -335,59 +407,39 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise
                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">项目编号</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">项目名称</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">招标人</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">招标控制价</th>
-                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">项目进度</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">招标代理</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">开标时间</th>
+                <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100">项目状态</th>
                 <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-wider border-b border-slate-100 text-center">操作</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
-              {filteredProjects.length > 0 ? filteredProjects
-                .slice((currentPage - 1) * pageSize, currentPage * pageSize)
-                .map((project, i) => {
-                const progress = project.status === '已完成' ? 100 : (project.progress || 45 + (i * 7) % 40);
+              {inProgressProjects.length > 0 ? inProgressProjects.map((project, i) => {
+                const progress = project.progress || 45;
                 return (
                   <tr key={project.id} className="hover:bg-slate-50/50 transition-colors group">
-                    <td className="px-6 py-4 text-xs text-slate-500 font-mono">{project.code}</td>
-                    <td className="px-6 py-4 text-xs font-bold text-slate-700 group-hover:text-primary transition-colors">{project.name}</td>
-                    <td className="px-6 py-4 text-xs text-slate-600">{project.tenderer}</td>
-                    <td className="px-6 py-4 text-xs font-bold text-slate-600 font-mono">{project.tenderControlPrice || '-'}</td>
-                    <td className="px-6 py-4">
-                      <div className="w-32">
-                        <div className="flex items-center justify-between mb-1.5">
-                          <span className="text-[10px] font-bold text-slate-500 font-mono">{progress}%</span>
-                          <span className={`text-[9px] font-bold ${project.status === '已完成' ? 'text-emerald-500' : 'text-primary'}`}>
-                            {project.status}
-                          </span>
-                        </div>
-                        <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                          <motion.div 
-                            initial={{ width: 0 }}
-                            animate={{ width: `${progress}%` }}
-                            transition={{ duration: 1, delay: i * 0.05 }}
-                            className={`h-full rounded-full ${
-                              project.status === '已完成' ? 'bg-emerald-500' : 'bg-primary shadow-[0_0_8px_rgba(59,130,246,0.3)]'
-                            }`}
-                          />
-                        </div>
-                      </div>
+                    <td className="px-6 py-4 text-xs text-slate-500 font-mono whitespace-nowrap">{project.code}</td>
+                    <td className="px-6 py-4 text-xs font-bold text-slate-700 group-hover:text-primary transition-colors max-w-[200px] truncate">
+                      {project.name}
                     </td>
-                    <td className="px-6 py-4 text-xs text-slate-500 font-mono">
+                    <td className="px-6 py-4 text-xs text-slate-600 truncate max-w-[150px]">{project.tenderer}</td>
+                    <td className="px-6 py-4 text-xs font-bold text-slate-700">
+                      {project.tenderAgent || '华伦中建建设股份有限公司'}
+                    </td>
+                    <td className="px-6 py-4 text-xs text-slate-500 font-mono whitespace-nowrap">
                       {project.bidOpeningTime}
                     </td>
                     <td className="px-6 py-4">
-                      <div className="flex items-center justify-center gap-2">
-                        <button 
-                          className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-md transition-all"
-                          title="查看招标文件"
-                        >
-                          <Eye size={14} />
-                        </button>
-                        <button 
-                          className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/5 rounded-md transition-all"
-                          title="下载招标文件"
-                        >
-                          <Download size={14} />
+                      <div className="flex items-center gap-2">
+                        <div className="size-1.5 rounded-full bg-primary animate-pulse" />
+                        <span className="text-[10px] font-bold text-primary whitespace-nowrap">投标中</span>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex justify-center">
+                        <button className="flex items-center gap-1 px-3 py-1.5 bg-primary/5 hover:bg-primary text-primary hover:text-white rounded-lg text-[10px] font-bold border border-primary/10 transition-all group/btn">
+                          <RotateCw size={12} className="group-hover/btn:rotate-180 transition-transform duration-500" />
+                          进入工作台
                         </button>
                       </div>
                     </td>
@@ -396,21 +448,13 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise
               }) : (
                 <tr>
                   <td colSpan={7} className="px-6 py-12 text-center text-slate-400 text-xs italic">
-                    暂无匹配的项目数据
+                    暂无处于“投标中”状态的项目
                   </td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
-        <Pagination 
-          currentPage={currentPage}
-          totalPages={Math.ceil(filteredProjects.length / pageSize)}
-          pageSize={pageSize}
-          onPageChange={setCurrentPage}
-          onPageSizeChange={setPageSize}
-          totalItems={filteredProjects.length}
-        />
       </div>
     </motion.div>
   );

@@ -22,6 +22,7 @@ import {
   History,
   ArrowRight,
   ArrowLeft,
+  ArrowUpRight,
   User,
   Phone,
   Calendar,
@@ -43,6 +44,7 @@ import {
   PenTool,
   Scan,
   Activity,
+  Wrench,
   TrendingUp,
   Search,
   Maximize2,
@@ -94,7 +96,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 
 type Phase = 'preparation' | 'production' | 'inspection' | 'archiving';
-type SubView = 'main' | 'annotation-view' | 'key-info-view' | 'qualification-view' | 'risk-view' | 'file-production' | 'inspection-detail' | 'archive-register' | 'resource-center' | 'parsing-report' | 'margin-receipt';
+type SubView = 'main' | 'annotation-view' | 'key-info-view' | 'qualification-view' | 'risk-view' | 'file-production' | 'inspection-detail' | 'archive-register' | 'resource-center' | 'parsing-report' | 'margin-receipt' | 'bid-rewrite';
 
 interface WorkbenchProps {
   onExit: () => void;
@@ -165,6 +167,9 @@ const Workbench: React.FC<WorkbenchProps> = ({
   const [showCollaborativeSharing, setShowCollaborativeSharing] = useState(false);
   const [showFileViewer, setShowFileViewer] = useState(false);
   const [activeViewerTab, setActiveViewerTab] = useState<'core' | 'risk' | 'custom'>('risk');
+  const [clarificationRounds, setClarificationRounds] = useState<number>(0);
+  const [showParsingPage, setShowParsingPage] = useState(false);
+  const [showQualificationResult, setShowQualificationResult] = useState(false);
 
   const [insights, setInsights] = useState(() => {
     const saved = localStorage.getItem('workbench-insights');
@@ -229,6 +234,73 @@ const Workbench: React.FC<WorkbenchProps> = ({
   const [selectedCard, setSelectedCard] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0); // Dummy state for forcing re-render
   const [confirmDialog, setConfirmDialog] = useState<{ message: string, onConfirm: () => void } | null>(null);
+  
+  // AI and Parsing states moved to top level
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [analysisProgress, setAnalysisProgress] = useState(0);
+  const [showResultPage, setShowResultPage] = useState(false);
+  const [analyzingType, setAnalyzingType] = useState<'tender' | 'ai-bid'>('tender');
+  const [aiBidHistory, setAiBidHistory] = useLocalStorage('ai-bid-history', [
+    { id: '1', type: '资信标', name: '资信投标文件-初稿', status: '待完善', date: '2026-05-07', progress: 65 },
+    { id: '2', type: '技术标', name: '技术方案-精简版', status: '已完成', date: '2026-05-05', progress: 100 }
+  ]);
+  const [parsingHistory, setParsingHistory] = useLocalStorage('workbench-parsing-history', [
+    { name: '原始招标文件解析', date: '2026-05-01' },
+    { name: '第一次答疑文件解析', date: '2026-05-03' }
+  ]);
+  const [quota, setQuota] = useLocalStorage('parsing-quota-v2', { total: 100, remaining: 100 });
+  const [wordQuota, setWordQuota] = useLocalStorage('word-quota', { total: 50000, remaining: 42500 });
+
+  const handleCreateAiBid = (type: string) => {
+    setAnalyzingType('ai-bid');
+    setIsAnalyzing(true);
+    setAnalysisProgress(0);
+    const interval = setInterval(() => {
+      setAnalysisProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(interval);
+          setIsAnalyzing(false);
+          setCurrentPhase('inspection');
+          // Add to history
+          const newId = Math.random().toString(36).substr(2, 9);
+          setAiBidHistory(prevH => [{
+            id: newId,
+            type,
+            name: `${type}-${new Date().toLocaleDateString()}`,
+            status: '已完成',
+            date: new Date().toISOString().split('T')[0],
+            progress: 100
+          }, ...prevH]);
+          return 100;
+        }
+        return prev + 8;
+      });
+    }, 200);
+  };
+
+  const handleContinueAiBid = (item: any) => {
+    if (item.status === '已完成') {
+      setCurrentPhase('inspection');
+    } else {
+      setAnalyzingType('ai-bid');
+      setIsAnalyzing(true);
+      setAnalysisProgress(item.progress);
+      const interval = setInterval(() => {
+        setAnalysisProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            setIsAnalyzing(false);
+            setCurrentPhase('inspection');
+            // Update history item
+            setAiBidHistory(prevH => prevH.map(h => h.id === item.id ? { ...h, status: '已完成', progress: 100 } : h));
+            return 100;
+          }
+          return prev + 10;
+        });
+      }, 200);
+    }
+  };
+
   const [projectData, setProjectData] = useState(initialProjectData || {
     projectName: `城市基础设施二期项目 (${currentEnterprise.name})`,
     projectNumber: 'BID-2025-00892',
@@ -373,8 +445,12 @@ const Workbench: React.FC<WorkbenchProps> = ({
     { id: 'archiving', label: '标后归档' },
   ];
 
-  const handleStartProduction = () => {
-    setShowToolModal(true);
+  const handleStartProduction = (view: SubView = 'file-production') => {
+    if (view === 'bid-rewrite') {
+      setSubView('bid-rewrite');
+    } else {
+      setShowToolModal(true);
+    }
   };
 
   return (
@@ -719,9 +795,37 @@ const Workbench: React.FC<WorkbenchProps> = ({
                   setOtherMaterialAttachments={setOtherMaterialAttachments}
                   isPaused={isPaused}
                   setConfirmDialog={setConfirmDialog}
+                  isAnalyzing={isAnalyzing}
+                  setIsAnalyzing={setIsAnalyzing}
+                  analysisProgress={analysisProgress}
+                  setAnalysisProgress={setAnalysisProgress}
+                  showResultPage={showResultPage}
+                  setShowResultPage={setShowResultPage}
+                  showQualificationResult={showQualificationResult}
+                  setShowQualificationResult={setShowQualificationResult}
+                  showParsingPage={showParsingPage}
+                  setShowParsingPage={setShowParsingPage}
+                  clarificationRounds={clarificationRounds}
+                  setClarificationRounds={setClarificationRounds}
+                  quota={quota}
+                  setQuota={setQuota}
+                  parsingHistory={parsingHistory}
+                  setParsingHistory={setParsingHistory}
+                  analyzingType={analyzingType}
+                  setAnalyzingType={setAnalyzingType}
                 />
               )}
-              {currentPhase === 'production' && <ProductionPhase onNavigate={handleStartProduction} onSelect={setSelectedCard} isPaused={isPaused} />}
+              {currentPhase === 'production' && (
+                <ProductionPhase 
+                  onNavigate={handleStartProduction} 
+                  onSelect={setSelectedCard} 
+                  isPaused={isPaused} 
+                  aiBidHistory={aiBidHistory}
+                  handleCreateAiBid={handleCreateAiBid}
+                  handleContinueAiBid={handleContinueAiBid}
+                  wordQuota={wordQuota}
+                />
+              )}
               {currentPhase === 'inspection' && <InspectionPhase onUploadMargin={() => setShowMarginUploadModal(true)} onSelect={setSelectedCard} isPaused={isPaused} />}
               {currentPhase === 'archiving' && <ArchivingPhase onOpenArchiving={() => setShowArchivingModal(true)} onOpenAttachments={() => setShowAttachmentsModal(true)} isPaused={isPaused} />}
             </div>
@@ -742,6 +846,7 @@ const Workbench: React.FC<WorkbenchProps> = ({
               {subView === 'archive-register' && <ArchiveRegisterView onBack={() => setSubView('main')} isPaused={isPaused} />}
               {subView === 'parsing-report' && <ParsingReportView onBack={() => setSubView('main')} projectData={projectData} isPaused={isPaused} />}
               {subView === 'margin-receipt' && <MarginReceiptUpload onBack={() => setSubView('main')} isPaused={isPaused} projectData={projectData} />}
+              {subView === 'bid-rewrite' && <BidRewriteView onBack={() => setSubView('main')} wordQuota={wordQuota} isPaused={isPaused} />}
               {subView === 'bid-parsing' && (
                 <BidParsing 
                   onBack={() => setSubView('main')} 
@@ -3482,7 +3587,25 @@ const PreparationPhase = ({
   otherMaterialAttachments,
   setOtherMaterialAttachments,
   isPaused,
-  setConfirmDialog
+  setConfirmDialog,
+  isAnalyzing,
+  setIsAnalyzing,
+  analysisProgress,
+  setAnalysisProgress,
+  showResultPage,
+  setShowResultPage,
+  showQualificationResult,
+  setShowQualificationResult,
+  showParsingPage,
+  setShowParsingPage,
+  clarificationRounds,
+  setClarificationRounds,
+  quota,
+  setQuota,
+  parsingHistory,
+  setParsingHistory,
+  analyzingType,
+  setAnalyzingType
 }: { 
   onNavigate: (view: SubView) => void, 
   onSelect: (id: string | null) => void,
@@ -3497,23 +3620,28 @@ const PreparationPhase = ({
   otherMaterialAttachments: Record<string, Attachment[]>,
   setOtherMaterialAttachments: React.Dispatch<React.SetStateAction<Record<string, Attachment[]>>>,
   isPaused: boolean,
-  setConfirmDialog: (dialog: { message: string, onConfirm: () => void } | null) => void
+  setConfirmDialog: (dialog: { message: string, onConfirm: () => void } | null) => void,
+  isAnalyzing: boolean,
+  setIsAnalyzing: React.Dispatch<React.SetStateAction<boolean>>,
+  analysisProgress: number,
+  setAnalysisProgress: React.Dispatch<React.SetStateAction<number>>,
+  showResultPage: boolean,
+  setShowResultPage: React.Dispatch<React.SetStateAction<boolean>>,
+  showQualificationResult: boolean,
+  setShowQualificationResult: React.Dispatch<React.SetStateAction<boolean>>,
+  showParsingPage: boolean,
+  setShowParsingPage: React.Dispatch<React.SetStateAction<boolean>>,
+  clarificationRounds: number,
+  setClarificationRounds: React.Dispatch<React.SetStateAction<number>>,
+  quota: { total: number, remaining: number },
+  setQuota: React.Dispatch<React.SetStateAction<{ total: number, remaining: number }>>,
+  parsingHistory: any[],
+  setParsingHistory: React.Dispatch<React.SetStateAction<any[]>>,
+  analyzingType: 'tender' | 'ai-bid',
+  setAnalyzingType: React.Dispatch<React.SetStateAction<'tender' | 'ai-bid'>>
 }) => {
   const [isParsed, setIsParsed] = useState(!!initialProjectData);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const [analysisProgress, setAnalysisProgress] = useState(0);
-  const [showResultPage, setShowResultPage] = useState(false);
-  const [showQualificationResult, setShowQualificationResult] = useState(false);
-  const [showParsingPage, setShowParsingPage] = useState(false);
-  const [clarificationRounds, setClarificationRounds] = useState<number>(0);
   
-  const [quota, setQuota] = useLocalStorage('parsing-quota-v2', { total: 100, remaining: 100 });
-  
-  const [parsingHistory] = useState([
-    { name: '克东县 2021 年老旧小区改造项目招标文件.pdf', date: '2026-03-15', status: '完成' },
-    { name: '智慧城市二期建设项目招标文件.docx', date: '2026-03-10', status: '完成' }
-  ]);
-
   const handleImmediateParsing = () => {
     console.log('Immediate parsing button clicked');
     
@@ -3670,8 +3798,12 @@ const PreparationPhase = ({
     return (
       <div className="flex flex-col items-center justify-center h-[calc(100vh-300px)] bg-white rounded-xl border border-slate-200 shadow-sm p-12">
         <div className="h-2"></div>
-        <h2 className="text-3xl font-black text-slate-900 mb-4">正在解析招标文件，请稍候</h2>
-        <p className="text-slate-400 mb-8">预计需要5-10分钟，解析过程中可关闭此页面</p>
+        <h2 className="text-3xl font-black text-slate-900 mb-4">
+          {analyzingType === 'tender' ? '正在解析招标文件，请稍候' : '正在智能生成标书内容，请稍候'}
+        </h2>
+        <p className="text-slate-400 mb-8">
+          {analyzingType === 'tender' ? '预计需要5-10分钟，解析过程中可关闭此页面' : '正在实时检索标书素材并生成高质量正文内容'}
+        </p>
         <div className="w-full max-w-2xl bg-slate-100 rounded-full h-4 mb-4">
           <div className="bg-primary h-4 rounded-full transition-all duration-300" style={{ width: `${analysisProgress}%` }}></div>
         </div>
@@ -4422,25 +4554,6 @@ const PreparationPhase = ({
               全部
             </button>
           </div>
-          <div className="divide-y divide-slate-50">
-            {parsingHistory.map((item, i) => (
-              <div 
-                key={i} 
-                onClick={() => {
-                  setIsAnalyzing(false);
-                  setShowResultPage(true);
-                  setAnalysisProgress(100);
-                }}
-                className="px-5 py-3 hover:bg-slate-50 transition-colors cursor-pointer group"
-              >
-                <p className="text-xs font-bold text-slate-700 truncate group-hover:text-primary transition-colors">{item.name}</p>
-                <div className="flex items-center justify-between mt-1">
-                  <span className="text-[10px] text-slate-400">{item.date}</span>
-                  <span className="text-[9px] px-1.5 py-0.5 bg-green-50 text-green-600 rounded-full font-bold">已解析</span>
-                </div>
-              </div>
-            ))}
-          </div>
         </div>
       </div>
     </div>
@@ -4448,72 +4561,437 @@ const PreparationPhase = ({
 );
 };
 
-const ProductionPhase = ({ onNavigate, onSelect, isPaused }: { onNavigate: () => void, onSelect: (id: string | null) => void, isPaused: boolean }) => {
+const ProductionPhase = ({ 
+  onNavigate, 
+  onSelect, 
+  isPaused, 
+  aiBidHistory, 
+  handleCreateAiBid, 
+  handleContinueAiBid,
+  wordQuota
+}: { 
+  onNavigate: (view: SubView) => void, 
+  onSelect: (id: string | null) => void, 
+  isPaused: boolean,
+  aiBidHistory: any[],
+  handleCreateAiBid: (type: string) => void,
+  handleContinueAiBid: (item: any) => void,
+  wordQuota: { total: number, remaining: number }
+}) => {
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyTab, setHistoryTab] = useState<'ai-bid' | 'bid-rewrite'>('ai-bid');
+  const [isAiBidActive, setIsAiBidActive] = useState(false);
+  const [isRewriteActive, setIsRewriteActive] = useState(false);
+
   return (
     <div className="space-y-8 min-h-[600px]">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
-      <div 
-        onMouseEnter={() => onSelect('file-production')}
-        onMouseLeave={() => onSelect(null)}
-        onClick={onNavigate}
-        className="bg-white border border-slate-200 rounded-xl p-8 text-slate-900 hover:bg-primary hover:text-white shadow-sm hover:shadow-xl hover:shadow-primary/20 group hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden"
-      >
-        <div className="relative z-10">
-          <div className="bg-blue-50 text-blue-600 p-3 rounded-lg group-hover:bg-white/10 group-hover:text-white backdrop-blur-sm w-fit mb-6 transition-colors">
-            <FileText size={24} />
-          </div>
-          <h4 className="text-xl font-bold mb-3">文件制作</h4>
-          <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-10 leading-relaxed min-h-[4.5rem] transition-colors">跳转至在线编辑器，进行投标文件正文编写，支持多人协同实时编辑。</p>
-          <button 
-            onClick={() => {
-              if (isPaused) {
-                alert('此项目已暂停');
-                return;
-              }
-              onNavigate();
-            }}
-            className={`w-full py-3.5 bg-white border border-slate-200 text-slate-700 group-hover:border-transparent group-hover:text-primary font-bold rounded-lg hover:bg-blue-50 transition-all flex items-center justify-center gap-2 ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            立即开始 <ArrowRight size={16} />
-          </button>
-        </div>
-      </div>
-      {[
-        { id: 'ai-bid', title: 'AI编标', desc: '利用AI大模型技术自动生成资信、技术等投标文件内容，提升编写效率。', icon: BrainCircuit, btn: '智能生成', color: 'bg-blue-50 text-blue-600' },
-        { id: 'material-market', title: '素材市场', desc: '提供丰富的标书素材模板，支持一键引用，快速构建高质量投标文件。', icon: LayoutGrid, btn: '浏览素材', color: 'bg-slate-50 text-slate-600' },
-        { id: 'bid-rewrite', title: '标书改写', desc: '智能优化标书语言表达，增强逻辑性与结构性，使内容更符合评委习惯。', icon: Languages, btn: '优化建议', color: 'bg-slate-50 text-slate-600' },
-      ].map((card, i) => (
+        {/* Card 1: File Production */}
         <div 
-          key={i} 
-          onMouseEnter={() => card.id !== 'bid-check' && onSelect(card.id)}
+          onMouseEnter={() => onSelect('file-production')}
+          onMouseLeave={() => onSelect(null)}
+          onClick={() => onNavigate('file-production')}
+          className="bg-white border border-slate-200 rounded-xl p-8 text-slate-900 hover:bg-primary shadow-sm hover:shadow-xl hover:shadow-primary/20 group transition-all duration-300 cursor-pointer relative overflow-hidden"
+        >
+          <div className="relative z-10">
+            <div className="bg-blue-50 text-blue-600 p-3 rounded-lg group-hover:bg-white/10 group-hover:text-white backdrop-blur-sm w-fit mb-6 transition-colors">
+              <FileText size={24} />
+            </div>
+            <h4 className="text-xl font-bold mb-3 group-hover:text-white">文件制作</h4>
+            <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-auto leading-relaxed transition-colors font-medium">跳转至在线编辑器，进行投标文件正文编写，支持多人协同实时编辑。</p>
+            <div className="mt-8">
+              <button 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (isPaused) return;
+                  onNavigate('file-production');
+                }}
+                className={`w-full py-3.5 bg-white border border-slate-200 text-slate-700 group-hover:border-transparent group-hover:text-primary font-bold rounded-lg hover:bg-blue-50 transition-all flex items-center justify-center gap-2 ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
+                立即开始
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Card 2: AI Bid (Flippable) */}
+        <div 
+          className="relative h-full"
+          style={{ perspective: '1000px' }}
+          onMouseEnter={() => onSelect('ai-bid')}
+          onMouseLeave={() => onSelect(null)}
+        >
+          <motion.div
+            animate={{ rotateY: isAiBidActive ? 180 : 0 }}
+            transition={{ duration: 0.6, type: "spring", stiffness: 260, damping: 20 }}
+            className="w-full h-full relative"
+            style={{ transformStyle: 'preserve-3d' }}
+          >
+            {/* Front Side: Introduction */}
+            <div 
+              className="absolute inset-0 bg-white border border-slate-200 rounded-xl p-8 shadow-sm hover:shadow-xl transition-all group cursor-pointer flex flex-col hover:-translate-y-1 duration-300"
+              style={{ backfaceVisibility: 'hidden' }}
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div className="p-3 rounded-lg bg-blue-50 text-blue-600 group-hover:bg-primary group-hover:text-white transition-colors">
+                  <BrainCircuit size={24} />
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">可用额度</div>
+                  <div className="text-sm font-mono font-bold text-primary">{wordQuota.remaining.toLocaleString()}</div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-xl font-bold">AI编标</h4>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setHistoryTab('ai-bid');
+                    setShowHistory(!showHistory || historyTab !== 'ai-bid');
+                  }}
+                  className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${showHistory && historyTab === 'ai-bid' ? 'bg-primary text-white shadow-sm' : 'text-primary hover:bg-primary/5 border border-primary/20'}`}
+                >
+                  {showHistory && historyTab === 'ai-bid' ? '收起历史' : '查看历史'}
+                </button>
+              </div>
+              <p className="text-slate-400 group-hover:text-slate-500 text-sm mb-auto leading-relaxed transition-colors font-medium">利用AI大模型技术自动生成资信、技术等投标文件内容，提升编写效率。</p>
+              
+              <div className="mt-8">
+                <button 
+                  onClick={() => setIsAiBidActive(true)}
+                  className="w-full py-3.5 bg-white border border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-primary font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+                >
+                  智能生成
+                </button>
+              </div>
+            </div>
+
+            {/* Back Side: Active Controls */}
+            <div 
+              style={{ 
+                transform: 'rotateY(180deg)',
+                backfaceVisibility: 'hidden'
+              }}
+              className="absolute inset-0 bg-white border border-slate-200 rounded-xl p-6 shadow-xl flex flex-col group h-full border-primary/20"
+            >
+              <div className="flex items-start justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600">
+                    <BrainCircuit size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-slate-900">AI编标</h4>
+                    <p className="text-[11px] text-slate-400 font-medium tracking-tight">配置生成选项</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsAiBidActive(false)}
+                  className="p-1 px-2 text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-500 rounded font-bold transition-colors"
+                >
+                  返回介绍
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isPaused) handleCreateAiBid('资信标');
+                  }}
+                  disabled={isPaused}
+                  className={`flex items-center justify-between p-3.5 rounded-xl border border-blue-100 bg-blue-50/50 hover:bg-blue-50 transition-all gap-3 group/btn ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-blue-100 text-blue-600 group-hover/btn:scale-110 transition-transform">
+                      <ShieldCheck size={18} />
+                    </div>
+                    <span className="text-sm font-bold text-blue-700">创建资信标</span>
+                  </div>
+                  <Plus size={16} className="text-blue-400" />
+                </button>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isPaused) handleCreateAiBid('技术标');
+                  }}
+                  disabled={isPaused}
+                  className={`flex items-center justify-between p-3.5 rounded-xl border border-indigo-100 bg-indigo-50/50 hover:bg-indigo-50 transition-all gap-3 group/btn ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-indigo-100 text-indigo-600 group-hover/btn:scale-110 transition-transform">
+                      <Wrench size={18} />
+                    </div>
+                    <span className="text-sm font-bold text-indigo-700">创建技术标</span>
+                  </div>
+                  <Plus size={16} className="text-indigo-400" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Card 3: Material Market */}
+        <div 
+          onMouseEnter={() => onSelect('material-market')}
           onMouseLeave={() => onSelect(null)}
           className="bg-white border border-slate-200 rounded-xl p-8 hover:bg-primary hover:text-white hover:shadow-xl hover:shadow-primary/20 transition-all group cursor-pointer flex flex-col hover:-translate-y-1 duration-300"
         >
-          <div className={`p-3 rounded-lg w-fit mb-6 ${card.color} group-hover:bg-white/10 group-hover:text-white transition-colors`}>
-            <card.icon size={24} />
+          <div className={`p-3 rounded-lg w-fit mb-6 bg-slate-50 text-slate-600 group-hover:bg-white/10 group-hover:text-white transition-colors`}>
+            <LayoutGrid size={24} />
           </div>
-          <h4 className="text-xl font-bold mb-3">{card.title}</h4>
-          <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-10 leading-relaxed min-h-[4.5rem] transition-colors">{card.desc}</p>
-          <button 
-            onClick={() => {
-              if (isPaused) {
-                alert('此项目已暂停');
-                return;
-              }
-              if (card.id === 'ai-bid') {
-                window.open('https://bqpoint.com/AIbianbiao/dist/index.html', '_blank');
-              } else {
-                onNavigate();
-              }
-            }}
-            className={`mt-auto w-full py-3.5 bg-white border border-slate-200 text-slate-700 group-hover:border-transparent group-hover:text-primary font-bold rounded-lg hover:bg-blue-50 transition-all ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            {card.btn}
-          </button>
+          <h4 className="text-xl font-bold mb-3">素材市场</h4>
+          <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-auto leading-relaxed transition-colors font-medium">提供丰富的标书素材模板，支持一键引用，快速构建高质量投标文件。</p>
+          <div className="mt-8">
+            <button 
+              onClick={() => !isPaused && onNavigate('file-production')}
+              disabled={isPaused}
+              className={`w-full py-3.5 bg-white border border-slate-200 text-slate-700 group-hover:border-transparent group-hover:text-primary font-bold rounded-lg hover:bg-blue-50 transition-all ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              浏览素材
+            </button>
+          </div>
         </div>
-      ))}
+
+        {/* Card 4: Bid Rewrite (Flippable) */}
+        <div 
+          className="relative h-full"
+          style={{ perspective: '1000px' }}
+          onMouseEnter={() => onSelect('bid-rewrite')}
+          onMouseLeave={() => onSelect(null)}
+        >
+          <motion.div
+            animate={{ rotateY: isRewriteActive ? 180 : 0 }}
+            transition={{ duration: 0.6, type: "spring", stiffness: 260, damping: 20 }}
+            className="w-full h-full relative"
+            style={{ transformStyle: 'preserve-3d' }}
+          >
+            {/* Front Side: Introduction */}
+            <div 
+              className="absolute inset-0 bg-white border border-slate-200 rounded-xl p-8 shadow-sm hover:shadow-xl transition-all group cursor-pointer flex flex-col hover:-translate-y-1 duration-300"
+              style={{ backfaceVisibility: 'hidden' }}
+            >
+              <div className="flex justify-between items-start mb-6">
+                <div className="p-3 rounded-lg bg-slate-50 text-slate-600 group-hover:bg-primary group-hover:text-white transition-colors">
+                  <Languages size={24} />
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">改写额度</div>
+                  <div className="text-sm font-mono font-bold text-primary">{wordQuota.remaining.toLocaleString()}</div>
+                </div>
+              </div>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-xl font-bold">标书改写</h4>
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setHistoryTab('bid-rewrite');
+                    setShowHistory(!showHistory || historyTab !== 'bid-rewrite');
+                  }}
+                  className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${showHistory && historyTab === 'bid-rewrite' ? 'bg-primary text-white shadow-sm' : 'text-primary hover:bg-primary/5 border border-primary/20'}`}
+                >
+                  {showHistory && historyTab === 'bid-rewrite' ? '收起历史' : '查看历史'}
+                </button>
+              </div>
+              <p className="text-slate-400 group-hover:text-slate-500 text-sm mb-auto leading-relaxed transition-colors font-medium">智能优化标书语言表达，增强逻辑性与结构性，使内容更符合评委习惯。</p>
+              
+              <div className="mt-8">
+                <button 
+                  onClick={() => setIsRewriteActive(true)}
+                  className={`w-full py-3.5 bg-white border border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-primary font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  立即开始
+                </button>
+              </div>
+            </div>
+
+            {/* Back Side: Active Controls */}
+            <div 
+              style={{ 
+                transform: 'rotateY(180deg)',
+                backfaceVisibility: 'hidden'
+              }}
+              className="absolute inset-0 bg-white border border-slate-200 rounded-xl p-6 shadow-xl flex flex-col group h-full border-primary/20"
+            >
+              <div className="flex items-start justify-between mb-8">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600">
+                    <Languages size={20} />
+                  </div>
+                  <div>
+                    <h4 className="text-lg font-bold text-slate-900">标书改写</h4>
+                    <p className="text-[11px] text-slate-400 font-medium tracking-tight">发起改写任务</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsRewriteActive(false)}
+                  className="p-1 px-2 text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-500 rounded font-bold transition-colors"
+                >
+                  返回介绍
+                </button>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isPaused) window.open('https://micro.bqpoint.com/epoint-web-micro/frame/pages/quickymakingrbd/rewrite_step_1.html?historytype=2&listtype=fastbid&prevpage=%E6%A0%87%E6%A1%A5%C2%B7AI%E7%BC%96%E6%A0%87', '_blank');
+                  }}
+                  disabled={isPaused}
+                  className={`flex items-center justify-between p-3.5 rounded-xl border border-blue-100 bg-blue-50 transition-all gap-3 group/btn ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-full bg-blue-100 text-blue-600 group-hover/btn:scale-110 transition-transform">
+                      <Plus size={18} />
+                    </div>
+                    <span className="text-sm font-bold text-blue-700">新建改写任务</span>
+                  </div>
+                  <ArrowRight size={16} className="text-blue-400" />
+                </button>
+                
+                <div className="mt-4 p-4 rounded-xl border border-amber-100 bg-amber-50/50">
+                  <div className="flex gap-2 text-amber-600 mb-1">
+                    <Info size={14} className="shrink-0 mt-0.5" />
+                    <span className="text-[10px] font-bold uppercase tracking-wider">改写指南</span>
+                  </div>
+                  <p className="text-[10px] text-amber-700/70 leading-relaxed font-medium">针对不同标书类型选择最优优化策略，支持 docx 格式直接导出。</p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {showHistory && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
+          >
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-8">
+                <button 
+                  onClick={() => setHistoryTab('ai-bid')}
+                  className={`flex items-center gap-3 transition-all relative pb-1 ${historyTab === 'ai-bid' ? 'opacity-100' : 'opacity-40 hover:opacity-100'}`}
+                >
+                  <div className="p-2 rounded-lg bg-orange-50 text-orange-500 shadow-sm border border-orange-100">
+                    <History size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">AI 编标生成历史</h3>
+                    <p className="text-[10px] text-slate-400 font-medium">查看并继续完成编标任务</p>
+                  </div>
+                  {historyTab === 'ai-bid' && <motion.div layoutId="activeTab" className="absolute -bottom-7 left-0 right-0 h-1 bg-primary rounded-t-full" />}
+                </button>
+                <div className="h-8 w-px bg-slate-200"></div>
+                <button 
+                  onClick={() => setHistoryTab('bid-rewrite')}
+                  className={`flex items-center gap-3 transition-all relative pb-1 ${historyTab === 'bid-rewrite' ? 'opacity-100' : 'opacity-40 hover:opacity-100'}`}
+                >
+                  <div className="p-2 rounded-lg bg-blue-50 text-blue-500 shadow-sm border border-blue-100">
+                    <Languages size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900">标书改写记录</h3>
+                    <p className="text-[10px] text-slate-400 font-medium">回顾已完成的改写任务</p>
+                  </div>
+                  {historyTab === 'bid-rewrite' && <motion.div layoutId="activeTab" className="absolute -bottom-7 left-0 right-0 h-1 bg-primary rounded-t-full" />}
+                </button>
+              </div>
+              <button 
+                onClick={() => setShowHistory(false)}
+                className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-100">
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">标书名称</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">类型</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider w-48">生成进度</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">最后更新</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">当前状态</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {aiBidHistory.length > 0 ? aiBidHistory.map((history) => (
+                    <tr key={history.id} className="hover:bg-slate-50/80 transition-colors group/row">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className={`p-2 rounded-lg ${history.type === '资信标' ? 'bg-blue-50 text-blue-500' : 'bg-indigo-50 text-indigo-500'} group-hover/row:scale-110 transition-transform duration-300 shadow-sm border border-current opacity-20`}>
+                            {history.type === '资信标' ? <ShieldCheck size={16} /> : <Wrench size={16} />}
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-slate-700">{history.name}</div>
+                            <div className="text-[10px] text-slate-400 font-medium">ID: {history.id} · AI智能生成</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`text-[11px] font-bold px-2 py-1 rounded-md ${
+                          history.type === '资信标' ? 'bg-blue-50 text-blue-600' : 'bg-indigo-50 text-indigo-600'
+                        }`}>
+                          {history.type}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden shadow-inner">
+                            <div 
+                              className={`h-full transition-all duration-1000 ${history.progress === 100 ? 'bg-green-500' : 'bg-primary shadow-[0_0_8px_rgba(var(--primary),0.5)]'}`}
+                              style={{ width: `${history.progress}%` }}
+                            />
+                          </div>
+                          <span className="text-[11px] font-mono font-bold text-slate-500">{history.progress}%</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-500 font-bold">{history.date}</td>
+                      <td className="px-6 py-4">
+                        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-2 w-fit shadow-sm border ${
+                          history.status === '已完成' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-amber-50 text-amber-600 border-amber-100'
+                        }`}>
+                          <div className={`w-1.5 h-1.5 rounded-full animate-pulse ${history.status === '已完成' ? 'bg-green-500' : 'bg-amber-500'}`} />
+                          {history.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button 
+                          onClick={() => !isPaused && handleContinueAiBid(history)}
+                          disabled={isPaused}
+                          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary/10 text-primary hover:bg-primary hover:text-white transition-all font-bold text-xs shadow-sm"
+                        >
+                          {history.status === '已完成' ? '重新编辑' : '继续生成'}
+                        </button>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-20 text-center">
+                        <div className="flex flex-col items-center justify-center text-slate-300">
+                          <div className="p-6 rounded-full bg-slate-50 mb-4 border border-dashed border-slate-200">
+                            <History size={48} className="opacity-10" />
+                          </div>
+                          <p className="text-base font-bold text-slate-400">暂无生成历史记录</p>
+                          <p className="text-sm mt-1 text-slate-300">您可以点击上方AI编标卡片中的按钮开始您的第一个创作</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
-  </div>
   );
 };
 
@@ -4568,7 +5046,7 @@ const InspectionPhase = ({ onUploadMargin, onSelect, isPaused }: { onUploadMargi
             }}
             className={`mt-auto w-full py-3.5 bg-white border border-slate-200 text-slate-700 group-hover:border-transparent group-hover:text-primary font-bold rounded-lg hover:bg-blue-50 transition-all flex items-center justify-center gap-2 ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            开始检查 <ArrowRight size={16} />
+            开始检查
           </button>
       </div>
 
@@ -6595,6 +7073,218 @@ const OtherMaterialsModal = ({
         </div>
       )}
     </AnimatePresence>
+  );
+};
+
+const BidRewriteView = ({ onBack, wordQuota, isPaused }: { onBack: () => void, wordQuota: { total: number, remaining: number }, isPaused: boolean }) => {
+  const [step, setStep] = useState(1);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadedFile, setUploadedFile] = useState<{ name: string, size: string } | null>(null);
+
+  const steps = [
+    { id: 1, label: '上传文件' },
+    { id: 2, label: '选择方向' },
+    { id: 3, label: '改写中' },
+    { id: 4, label: '完成' }
+  ];
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setIsUploading(true);
+      // Simulate upload
+      setTimeout(() => {
+        setUploadedFile({ name: file.name, size: (file.size / 1024 / 1024).toFixed(2) + 'MB' });
+        setIsUploading(false);
+      }, 1500);
+    }
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="flex flex-col h-full bg-slate-50 rounded-2xl overflow-hidden shadow-xl"
+    >
+      {/* Header */}
+      <div className="bg-white px-8 py-5 border-b border-slate-200 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={onBack}
+            className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400 hover:text-slate-600 font-bold flex items-center gap-2"
+          >
+            <ChevronLeft size={24} />
+          </button>
+          <div className="h-6 w-px bg-slate-200 mx-2"></div>
+          <h2 className="text-xl font-black text-slate-900 tracking-tight">标书改写</h2>
+        </div>
+      </div>
+
+      {/* Steps Component */}
+      <div className="bg-white px-8 py-8 border-b border-slate-100 shadow-sm relative z-10">
+        <div className="max-w-4xl mx-auto flex items-center justify-between relative">
+          {/* Progress Line */}
+          <div className="absolute top-5 left-8 right-8 h-[2px] bg-slate-100 z-0"></div>
+          <div 
+            className="absolute top-5 left-8 h-[2px] bg-primary z-0 transition-all duration-700 ease-out" 
+            style={{ width: `calc(${((step - 1) / (steps.length - 1)) * 100}% - 4px)` }}
+          ></div>
+
+          {steps.map((s) => (
+            <div key={s.id} className="relative z-10 flex flex-col items-center gap-3">
+              <div 
+                className={`size-10 rounded-full flex items-center justify-center font-bold text-sm transition-all duration-500 ${
+                  s.id < step 
+                    ? 'bg-primary text-white shadow-lg shadow-primary/20' 
+                    : s.id === step 
+                      ? 'bg-primary text-white ring-8 ring-primary/10 shadow-lg shadow-primary/20 scaled-110' 
+                      : 'bg-white border-2 border-slate-100 text-slate-400'
+                }`}
+              >
+                {s.id < step ? <Check size={20} weight="bold" /> : s.id}
+              </div>
+              <span className={`text-[11px] font-black uppercase tracking-widest ${s.id <= step ? 'text-slate-900' : 'text-slate-400'}`}>{s.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Main Content Area */}
+      <div className="flex-1 overflow-y-auto p-12 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:20px_20px]">
+        <div className="max-w-4xl mx-auto">
+          {step === 1 && (
+            <div className="space-y-10">
+              <div className="text-center space-y-3">
+                <h3 className="text-3xl font-black text-slate-900 tracking-tight">上传原始文件</h3>
+                <p className="text-slate-500 font-medium max-w-md mx-auto leading-relaxed">
+                  系统将利用深度学习模型，针对您上传的文档进行语境分析，并根据您的需求提供专业的改写建议。
+                </p>
+              </div>
+
+              <div className="relative group">
+                <input 
+                  type="file" 
+                  onChange={handleFileUpload}
+                  disabled={isPaused || isUploading}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-20"
+                />
+                <div className={`aspect-[21/9] border-2 border-dashed rounded-[2.5rem] flex flex-col items-center justify-center gap-6 transition-all duration-500 relative overflow-hidden ${
+                  isUploading 
+                    ? 'bg-white border-primary shadow-2xl shadow-primary/5' 
+                    : 'bg-white border-slate-200 group-hover:border-primary group-hover:shadow-2xl group-hover:shadow-primary/5'
+                }`}>
+                  {isUploading ? (
+                    <div className="flex flex-col items-center gap-6">
+                      <div className="size-20 relative">
+                        <svg className="w-full h-full transform -rotate-90">
+                           <circle className="text-slate-100" strokeWidth="4" stroke="currentColor" fill="transparent" r="30" cx="40" cy="40"/>
+                           <circle className="text-primary" strokeWidth="4" strokeDasharray={188.4} strokeDashoffset={188.4 * (1 - step/100)} strokeLinecap="round" stroke="currentColor" fill="transparent" r="30" cx="40" cy="40"/>
+                        </svg>
+                        <div className="absolute inset-0 flex items-center justify-center text-primary">
+                          <UploadCloud size={32} className="animate-bounce" />
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-lg font-black text-primary">文件上传中...</p>
+                        <p className="text-xs text-slate-400 mt-1 font-bold uppercase tracking-widest">请勿关闭当前页面</p>
+                      </div>
+                    </div>
+                  ) : uploadedFile ? (
+                    <div className="flex flex-col items-center gap-6 p-8">
+                      <div className="size-24 bg-emerald-50 text-emerald-500 rounded-3xl flex items-center justify-center shadow-inner relative group/file">
+                        <FileText size={48} />
+                        <div className="absolute -top-2 -right-2 bg-emerald-500 text-white p-1 rounded-full border-4 border-white shadow-lg">
+                          <Check size={14} />
+                        </div>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xl font-black text-slate-900 tracking-tight">{uploadedFile.name}</p>
+                        <p className="text-[11px] text-slate-400 mt-2 font-bold uppercase tracking-widest bg-slate-100 px-3 py-1 rounded-full inline-block">
+                          {uploadedFile.size} • 解析完成
+                        </p>
+                      </div>
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setUploadedFile(null);
+                        }}
+                        className="text-xs font-black text-red-500 hover:text-red-600 transition-colors flex items-center gap-1.5"
+                      >
+                        <Trash2 size={14} /> 重新上传
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="size-24 bg-slate-50 text-slate-300 rounded-[2rem] flex items-center justify-center group-hover:scale-110 group-hover:bg-primary group-hover:text-white group-hover:rotate-6 transition-all duration-500 shadow-inner">
+                        <UploadCloud size={48} />
+                      </div>
+                      <div className="text-center">
+                        <p className="text-2xl font-black text-slate-700 tracking-tight">拖拽文件至此处或点击上传</p>
+                        <p className="text-xs text-slate-400 mt-3 font-bold uppercase tracking-[0.2em]">支持格式：Word (.doc/.docx) • 最大 20MB</p>
+                      </div>
+                      {/* Decorative corner accents */}
+                      <div className="absolute top-6 left-6 size-4 border-t-2 border-l-2 border-slate-200 group-hover:border-primary transition-colors"></div>
+                      <div className="absolute top-6 right-6 size-4 border-t-2 border-r-2 border-slate-200 group-hover:border-primary transition-colors"></div>
+                      <div className="absolute bottom-6 left-6 size-4 border-b-2 border-l-2 border-slate-200 group-hover:border-primary transition-colors"></div>
+                      <div className="absolute bottom-6 right-6 size-4 border-b-2 border-r-2 border-slate-200 group-hover:border-primary transition-colors"></div>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {/* Work in Progress Placeholder */}
+          {step > 1 && (
+            <div className="flex flex-col items-center justify-center py-20 text-center space-y-8">
+              <div className="relative">
+                <div className="size-32 bg-slate-100 text-slate-300 rounded-[2.5rem] flex items-center justify-center animate-pulse">
+                  <Wrench size={56} />
+                </div>
+                <div className="absolute -bottom-2 -right-2 bg-amber-400 text-white px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-lg">
+                  Coming Soon
+                </div>
+              </div>
+              <div className="space-y-4">
+                <h3 className="text-2xl font-black text-slate-900 tracking-tight">标书深度改写处理中</h3>
+                <p className="text-slate-500 max-w-sm mx-auto font-medium leading-relaxed">
+                  当前模块正在进行大模型接口联调，很快您就能体验到 AI 实时改写与智能润色功能。
+                </p>
+              </div>
+              <button 
+                onClick={() => setStep(1)}
+                className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black hover:bg-slate-800 transition-all active:scale-95 shadow-xl shadow-slate-900/10"
+              >
+                返回重新选择文件
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="bg-white px-10 py-8 border-t border-slate-100 flex justify-end items-center bg-white/80 backdrop-blur-md sticky bottom-0 z-20">
+        <div className="flex gap-4">
+          <button 
+            onClick={onBack}
+            className="px-10 py-4 border border-slate-200 text-slate-600 rounded-2xl font-black hover:bg-slate-50 transition-all flex items-center gap-2"
+          >
+            取消操作
+          </button>
+          <button 
+            onClick={() => setStep(prev => Math.min(4, prev + 1))}
+            disabled={!uploadedFile || isUploading || step === 4}
+            className={`px-14 py-4 rounded-2xl font-black transition-all flex items-center gap-3 active:scale-95 ${
+              !uploadedFile || isUploading || step === 4
+                ? 'bg-slate-100 text-slate-400 cursor-not-allowed shadow-none'
+                : 'bg-[#0052CC] text-white shadow-2xl shadow-blue-600/20 hover:bg-[#0052CC]/90 hover:-translate-y-1'
+            }`}
+          >
+            下一步流程
+          </button>
+        </div>
+      </div>
+    </motion.div>
   );
 };
 
