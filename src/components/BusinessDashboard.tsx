@@ -23,7 +23,8 @@ interface BusinessDashboardProps {
 }
 
 const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise, projects }) => {
-  const [selectedYear, setSelectedYear] = useState<string>('全部');
+  const [selectedYear, setSelectedYear] = useState<string>('2026');
+  const [selectedMonth, setSelectedMonth] = useState<number>(4); // 0 for All Year
   const [trendViewType, setTrendViewType] = useState<'month' | 'year'>('month');
   const [trendSelectedYear, setTrendSelectedYear] = useState<string>('全部');
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -31,11 +32,26 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise
   const [pageSize, setPageSize] = useState(10);
   const yearOptions = ['全部', '2026', '2025', '2024'];
 
+  // Calculate sliding window of months
+  const visibleMonths = useMemo(() => {
+    if (selectedMonth === 0) return [1, 2, 3];
+    const prev = selectedMonth === 1 ? 12 : selectedMonth - 1;
+    const next = selectedMonth === 12 ? 1 : selectedMonth + 1;
+    return [prev, selectedMonth, next];
+  }, [selectedMonth]);
+
   // 1. Calculate Stats
   const stats = useMemo(() => {
-    const filteredProjects = selectedYear === '全部' 
-      ? projects 
-      : projects.filter(p => p.bidOpeningTime.includes(`${selectedYear}年`) || p.bidOpeningTime.startsWith(selectedYear));
+    const filteredProjects = projects.filter(p => {
+      const matchesYear = selectedYear === '全部' || p.bidOpeningTime.includes(`${selectedYear}年`) || p.bidOpeningTime.startsWith(selectedYear);
+      let matchesMonth = true;
+      if (selectedMonth !== 0 && selectedYear !== '全部') {
+        const monthStrZH = `${selectedYear}年${selectedMonth.toString().padStart(2, '0')}月`;
+        const monthStrISO = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}`;
+        matchesMonth = p.bidOpeningTime.includes(monthStrZH) || p.bidOpeningTime.startsWith(monthStrISO);
+      }
+      return matchesYear && matchesMonth;
+    });
 
     const totalCount = filteredProjects.length;
     const activeCount = filteredProjects.filter(p => p.status === '进行中' || p.status === '投标中').length;
@@ -53,13 +69,20 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise
       { label: '投标保证金总额', value: totalDeposit.toLocaleString('zh-CN', { minimumFractionDigits: 2 }), unit: '元' },
       { label: '待退还保证金金额', value: pendingRefund.toLocaleString('zh-CN', { minimumFractionDigits: 2 }), unit: '元' },
     ];
-  }, [projects, selectedYear]);
+  }, [projects, selectedYear, selectedMonth]);
 
   // 2. Status Distribution for Chart
   const statusDistribution = useMemo(() => {
-    const filteredProjects = selectedYear === '全部' 
-      ? projects 
-      : projects.filter(p => p.bidOpeningTime.includes(`${selectedYear}年`) || p.bidOpeningTime.startsWith(selectedYear));
+    const filteredProjects = projects.filter(p => {
+      const matchesYear = selectedYear === '全部' || p.bidOpeningTime.includes(`${selectedYear}年`) || p.bidOpeningTime.startsWith(selectedYear);
+      let matchesMonth = true;
+      if (selectedMonth !== 0 && selectedYear !== '全部') {
+        const monthStrZH = `${selectedYear}年${selectedMonth.toString().padStart(2, '0')}月`;
+        const monthStrISO = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}`;
+        matchesMonth = p.bidOpeningTime.includes(monthStrZH) || p.bidOpeningTime.startsWith(monthStrISO);
+      }
+      return matchesYear && matchesMonth;
+    });
 
     const counts = {
       '未投标': 0,
@@ -86,15 +109,15 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise
     });
 
     // 为图表提供数据，包含副标题逻辑
-    const openedCount = 20;
-    const wonCount = 5;
-    const winRate = 25;
+    const openedCount = counts['已开标'];
+    const wonCount = counts['已中标'];
+    const winRate = openedCount > 0 ? Math.round((wonCount / openedCount) * 100) : 0;
 
     const data = [
-      { name: '未投标', value: 3, color: '#f59e0b' },
-      { name: '投标中', value: 10, color: '#3b82f6' },
+      { name: '未投标', value: counts['未投标'], color: '#f59e0b' },
+      { name: '投标中', value: counts['投标中'], color: '#3b82f6' },
       { name: '已开标', value: openedCount, color: '#10b981', info: `中标: ${wonCount}个 | 中标率: ${winRate}%` },
-      { name: '放弃投标', value: 2, color: '#94a3b8' },
+      { name: '放弃投标', value: counts['放弃投标'], color: '#94a3b8' },
     ];
 
     const total = data.reduce((acc, curr) => acc + curr.value, 0);
@@ -106,7 +129,7 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise
       wonCount,
       winRate
     };
-  }, [projects, selectedYear]);
+  }, [projects, selectedYear, selectedMonth]);
 
   const { chartData, wonCount, winRate } = statusDistribution;
 
@@ -137,14 +160,20 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise
   // 4. Filtered and Sorted Projects List
   const filteredProjects = useMemo(() => {
     let result = projects.filter(p => {
-      const matchesYear = selectedYear === '全部' || p.bidOpeningTime.startsWith(selectedYear);
+      const matchesYear = selectedYear === '全部' || p.bidOpeningTime.includes(`${selectedYear}年`) || p.bidOpeningTime.startsWith(selectedYear);
+      let matchesMonth = true;
+      if (selectedMonth !== 0 && selectedYear !== '全部') {
+        const monthStrZH = `${selectedYear}年${selectedMonth.toString().padStart(2, '0')}月`;
+        const monthStrISO = `${selectedYear}-${selectedMonth.toString().padStart(2, '0')}`;
+        matchesMonth = p.bidOpeningTime.includes(monthStrZH) || p.bidOpeningTime.startsWith(monthStrISO);
+      }
       const matchesSearch = p.name.includes(searchQuery) || p.code.includes(searchQuery) || p.tenderer.includes(searchQuery);
-      return matchesYear && matchesSearch;
+      return matchesYear && matchesMonth && matchesSearch;
     });
 
     // Sort by bidOpeningTime descending
     return result.sort((a, b) => new Date(b.bidOpeningTime).getTime() - new Date(a.bidOpeningTime).getTime());
-  }, [projects, selectedYear, searchQuery]);
+  }, [projects, selectedYear, selectedMonth, searchQuery]);
 
   // 5. Top Tenderers
   const topTenderers = useMemo(() => {
@@ -184,28 +213,51 @@ const BusinessDashboard: React.FC<BusinessDashboardProps> = ({ currentEnterprise
           </h3>
           <p className="text-xs text-slate-400 mt-1">监控企业投标动态与核心业务指标</p>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-lg border border-slate-100">
-            <Filter size={14} className="text-slate-400" />
-            <span className="text-xs font-bold text-slate-500">年度筛选:</span>
-            <div className="flex items-center gap-1">
-              {yearOptions.map((year) => (
+        <div className="flex flex-col items-end gap-3">
+          {/* Combined Selection */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 min-w-[120px] hover:bg-slate-100/50 transition-colors">
+              <Filter size={12} className="text-slate-400" />
+              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">选择年份:</span>
+              <select 
+                value={selectedYear}
+                onChange={(e) => setSelectedYear(e.target.value)}
+                className="bg-transparent text-xs font-black text-primary outline-none cursor-pointer flex-1"
+              >
+                {yearOptions.map((year) => (
+                  <option key={year} value={year}>{year === '全部' ? '全部' : `${year}年`}</option>
+                ))}
+              </select>
+            </div>
+
+            {selectedYear !== '全部' && (
+              <div className="flex items-center gap-1 bg-slate-50/50 p-1 rounded-xl border border-slate-100">
                 <button
-                  key={year}
-                  onClick={() => {
-                    setSelectedYear(year);
-                    if (year !== '全部') setTrendViewType('month');
-                  }}
-                  className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${
-                    selectedYear === year
-                      ? 'bg-primary text-white shadow-sm'
+                  onClick={() => setSelectedMonth(0)}
+                  className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${
+                    selectedMonth === 0
+                      ? 'bg-primary text-white shadow-md'
                       : 'text-slate-400 hover:bg-slate-100'
                   }`}
                 >
-                  {year}
+                  全年
                 </button>
-              ))}
-            </div>
+                <div className="w-px h-3 bg-slate-200 mx-1" />
+                {visibleMonths.map((month) => (
+                  <button
+                    key={month}
+                    onClick={() => setSelectedMonth(month)}
+                    className={`px-3 py-1 rounded-lg text-[10px] font-black transition-all ${
+                      selectedMonth === month
+                        ? 'bg-primary text-white shadow-md'
+                        : 'text-slate-400 hover:bg-slate-100'
+                    }`}
+                  >
+                    {month}月
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
