@@ -203,7 +203,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 sm:p-6 overflow-auto">
       <div className="bg-white rounded-[32px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex overflow-hidden w-[1060px] min-h-[600px] h-auto md:h-[640px] shrink-0">
         {/* Left Sidebar */}
-        <div className="w-[480px] bg-primary px-12 flex flex-col justify-center relative overflow-hidden shrink-0 hidden md:flex">
+        <div className="w-[560px] bg-primary px-16 flex flex-col justify-center relative overflow-hidden shrink-0 hidden md:flex">
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-10 pointer-events-none">
             <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-white blur-3xl" />
@@ -307,7 +307,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="w-full max-w-[440px] flex flex-col items-center"
+                className="w-full max-w-[380px] flex flex-col items-center"
               >
                 {loginMode === 'form' ? (
                   <>
@@ -551,47 +551,47 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="w-full max-w-[440px]"
+                className="w-full max-w-[380px]"
               >
                 <button 
                   onClick={() => setView('login')}
-                  className="flex items-center gap-2 text-slate-400 hover:text-primary transition-colors mb-8 group"
+                  className="flex items-center gap-2 text-slate-400 hover:text-primary transition-colors mb-6 group"
                 >
-                  <ArrowLeft size={24} className="group-hover:-translate-x-1 transition-transform" />
-                  <span className="text-xl font-bold">返回登录</span>
+                  <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+                  <span className="text-base font-bold">返回登录</span>
                 </button>
 
-                <h2 className="text-5xl font-extrabold text-slate-900 mb-14 tracking-tight whitespace-nowrap">
+                <h2 className="text-4xl font-extrabold text-slate-900 mb-10 tracking-tight whitespace-nowrap">
                   重置密码
                 </h2>
 
-                <div className="space-y-8">
+                <div className="space-y-6">
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-400">
-                      <Smartphone size={28} />
+                      <Smartphone size={24} />
                     </div>
                     <input 
                       type="text" 
                       placeholder="请输入手机号码"
-                      className="w-full pl-16 pr-6 py-6 bg-slate-50 border border-slate-200 rounded-[24px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-xl font-medium"
+                      className="w-full pl-16 pr-6 pt-4 pb-4 bg-slate-50 border border-slate-200 rounded-[20px] focus:bg-white focus:ring-[4px] focus:ring-primary/10 focus:border-primary outline-none transition-all text-lg font-medium"
                     />
                   </div>
 
                   <div className="flex gap-4">
                     <div className="relative flex-1">
                       <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-400">
-                        <ShieldIcon size={28} />
+                        <ShieldIcon size={24} />
                       </div>
                       <input 
                         type="text" 
                         placeholder="验证码"
-                        className="w-full pl-16 pr-6 py-6 bg-slate-50 border border-slate-200 rounded-[24px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-xl font-medium"
+                        className="w-full pl-16 pr-6 pt-4 pb-4 bg-slate-50 border border-slate-200 rounded-[20px] focus:bg-white focus:ring-[4px] focus:ring-primary/10 focus:border-primary outline-none transition-all text-lg font-medium"
                       />
                     </div>
                     <button 
                       onClick={startCountdown}
                       disabled={countdown > 0}
-                      className="px-8 bg-slate-50 border border-slate-200 rounded-[24px] text-lg font-bold text-primary hover:bg-slate-100 disabled:text-slate-400 transition-all min-w-[140px]"
+                      className="px-6 bg-slate-50 border border-slate-200 rounded-[20px] text-base font-bold text-primary hover:bg-slate-100 disabled:text-slate-400 transition-all min-w-[130px]"
                     >
                       {countdown > 0 ? `${countdown}s` : '获取验证码'}
                     </button>
@@ -599,29 +599,29 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-400">
-                      <Lock size={28} />
+                      <Lock size={24} />
                     </div>
                     <input 
                       type="password" 
                       placeholder="设置新密码"
-                      className="w-full pl-16 pr-6 py-6 bg-slate-50 border border-slate-200 rounded-[24px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-xl font-medium"
+                      className="w-full pl-16 pr-6 pt-4 pb-4 bg-slate-50 border border-slate-200 rounded-[20px] focus:bg-white focus:ring-[4px] focus:ring-primary/10 focus:border-primary outline-none transition-all text-lg font-medium"
                     />
                   </div>
 
                   <div className="relative">
                     <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-400">
-                      <Lock size={28} />
+                      <Lock size={24} />
                     </div>
                     <input 
                       type="password" 
                       placeholder="确认新密码"
-                      className="w-full pl-16 pr-6 py-6 bg-slate-50 border border-slate-200 rounded-[24px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-xl font-medium"
+                      className="w-full pl-16 pr-6 pt-4 pb-4 bg-slate-50 border border-slate-200 rounded-[20px] focus:bg-white focus:ring-[4px] focus:ring-primary/10 focus:border-primary outline-none transition-all text-lg font-medium"
                     />
                   </div>
 
                   <button 
                     onClick={() => setView('login')}
-                    className="w-full py-6 bg-primary text-white rounded-[24px] font-bold text-2xl shadow-xl shadow-primary/20 hover:shadow-2xl hover:bg-primary/90 active:scale-[0.98] transition-all mt-8"
+                    className="w-full py-4 bg-primary text-white rounded-[20px] font-bold text-xl shadow-xl shadow-primary/20 hover:shadow-2xl hover:bg-primary/90 active:scale-[0.98] transition-all mt-4"
                   >
                     确认重置
                   </button>
@@ -633,7 +633,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="w-full max-w-[440px] flex flex-col items-center"
+                className="w-full max-w-[380px] flex flex-col items-center"
               >
                 <h2 className="text-4xl font-extrabold text-slate-900 mb-12 tracking-tight text-center whitespace-nowrap">
                   个人用户注册

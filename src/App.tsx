@@ -872,10 +872,10 @@ export default function App() {
     phone: '138 0000 8888'
   });
   const [enterprises, setEnterprises] = useLocalStorage('enterprises', [
-    { id: 'personal', name: profile?.nickname || '陈经理', status: '13800138000' },
-    { id: '1', name: '中建八局第三建设有限公司', status: '已加入' },
-    { id: '2', name: '中铁建工集团有限公司', status: '已加入' },
-    { id: '3', name: '中国建筑第一局(集团)有限公司', status: '审核中' },
+    { id: 'personal', name: profile?.nickname || '陈经理', status: '13800138000', role: '个人身份' },
+    { id: '1', name: '中建八局第三建设有限公司', status: '已加入', role: '超级管理员' },
+    { id: '2', name: '中铁建工集团有限公司', status: '已加入', role: '普通员工' },
+    { id: '3', name: '中国建筑第一局(集团)有限公司', status: '审核中', role: '普通员工' },
   ]);
 
   // Sync personal identity name with nickname
@@ -1117,9 +1117,14 @@ export default function App() {
 
   const handleAddEnterprise = (name: string) => {
     const newId = (enterprises.length + 1).toString();
-    const newEnterprise = { id: newId, name, status: '已加入' };
+    const newEnterprise = { id: newId, name, status: '已加入', role: '超级管理员' };
     setEnterprises(prev => [...prev, newEnterprise]);
     return newId;
+  };
+
+  const handleRemoveEnterprise = (id: string) => {
+    setEnterprises(prev => prev.filter(e => e.id !== id));
+    setCurrentEnterpriseId('personal');
   };
 
   if (isReportMode) {
@@ -1175,6 +1180,7 @@ export default function App() {
             localStorage.removeItem('isLoggedIn');
           }}
           onAddEnterprise={handleAddEnterprise}
+          onRemoveEnterprise={handleRemoveEnterprise}
           profile={profile}
         />
         <main className="flex-1 overflow-y-auto p-8 [scrollbar-gutter:stable]">
