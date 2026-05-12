@@ -25,6 +25,8 @@ import {
   Database,
   BookOpen,
   ShieldCheck,
+  Zap,
+  Edit3,
   Plus,
   Calculator,
   List,
@@ -108,11 +110,40 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, onEnterWorkbench, c
   };
 
   const [taskAlerts, setTaskAlerts] = useState([
-    { id: 1, title: '2026年新能源充电桩部署规划咨询及配套设施建设项目 - 投标保证金缴纳截止', time: '2026-04-10 17:00', type: '保证金', daysLeft: 1 },
-    { id: 2, title: '公共图书馆数字化二期项目及馆藏资源扩容方案 - 投标文件递交截止', time: '2026-04-11 09:30', type: '投标截止', daysLeft: 2 },
-    { id: 3, title: '城市轨道交通信号维护服务年度框架协议 - 保证金缴纳截止', time: '2026-04-12 16:00', type: '保证金', daysLeft: 3 },
-    { id: 4, title: '社区养老服务平台开发与智慧医疗集成项目 - 投标文件递交截止', time: '2026-04-12 10:00', type: '投标截止', daysLeft: 3 },
+    { id: 1, title: '2026年新能源充电桩部署规划咨询及配套设施建设项目', time: '2026-04-10 17:00', type: '保证金', daysLeft: 1 },
+    { id: 2, title: '公共图书馆数字化二期项目及馆藏资源扩容方案', time: '2026-04-11 09:30', type: '投标截止', daysLeft: 2 },
+    { id: 3, title: '城市轨道交通信号维护服务年度框架协议', time: '2026-04-12 16:00', type: '保证金', daysLeft: 3 },
+    { id: 4, title: '社区养老服务平台开发与智慧医疗集成项目', time: '2026-04-12 10:00', type: '投标截止', daysLeft: 3 },
   ]);
+
+  useEffect(() => {
+    // Test connection or fetch user projects if using external backend...
+  }, []);
+
+  const handleOpenReport = (id?: string, type: string = 'report') => {
+    let view = 'report';
+    if (type === 'bid') view = 'bid-creation';
+    if (type === 'tech-bid') view = 'tech-bid-creation';
+    if (type === 'bid-rewrite') view = 'bid-rewrite';
+    
+    const url = window.location.origin + `?view=${view}&projectId=${id || 'default'}`;
+    window.open(url, '_blank');
+  };
+
+  const [parsingHistory, setParsingHistory] = useState([
+    { id: 'h1', name: '原始招标文件解析', date: '2026-05-01', project: '智慧校园建设项目', type: 'report' },
+    { id: 'h2', name: '第一次答疑文件解析', date: '2026-05-03', project: '轨道交通五号线', type: 'report' },
+    { id: 'h3', name: '第二次答疑文件解析', date: '2026-05-05', project: '新能源充电桩项目', type: 'report' },
+    { id: 'r1', name: '技术标方案-改写优化', date: '2026-05-10', project: '柳州市水利局项目', type: 'bid-rewrite' },
+    { id: 't1', name: '技术标-智能起草初稿', date: '2026-05-08', project: '水利枢纽建设工程', type: 'tech-bid' },
+    { id: 'b1', name: '资信标-智能起草初稿', date: '2026-05-07', project: '公共服务平台项目', type: 'bid' },
+    { id: 'h4', name: '技术参数对比报告', date: '2026-05-06', project: '智慧医疗集成项目', type: 'report' },
+    { id: 'h5', name: '商务风险识别报告', date: '2026-05-07', project: '公共图书馆数字化', type: 'report' },
+    { id: 'h6', name: '招标文件深度全解析', date: '2026-05-08', project: '数字化二期方案', type: 'report' },
+    { id: 'h7', name: '关键条款提取列表', date: '2026-05-09', project: '城市轨道交通信号', type: 'report' },
+  ]);
+  const [historyPage, setHistoryPage] = useState(1);
+  const historyItemsPerPage = 5;
 
   const dismissAlert = (id: number) => {
     setTaskAlerts(prev => prev.filter(alert => alert.id !== id));
@@ -663,9 +694,83 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, onEnterWorkbench, c
               </div>
             </div>
           </div>
+
+          {/* Analysis History Section */}
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col mt-8">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Database className="text-primary" size={20} />
+                <h3 className="text-lg font-bold">解析历史记录</h3>
+              </div>
+            </div>
+            <div className="divide-y divide-slate-50">
+              {parsingHistory
+                .slice((historyPage - 1) * historyItemsPerPage, historyPage * historyItemsPerPage)
+                .map((item, idx) => (
+                  <div 
+                    key={idx}
+                    onClick={() => handleOpenReport(item.project, item.type)}
+                    className="p-6 hover:bg-slate-50 transition-colors flex items-center justify-between group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className={`size-10 rounded-xl flex items-center justify-center transition-colors ${
+                        item.type === 'bid' 
+                        ? 'bg-blue-50 text-blue-600 group-hover:bg-blue-600 group-hover:text-white' 
+                        : item.type === 'tech-bid'
+                        ? 'bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white'
+                        : item.type === 'bid-rewrite'
+                        ? 'bg-amber-50 text-amber-600 group-hover:bg-amber-600 group-hover:text-white'
+                        : 'bg-slate-100 text-slate-400 group-hover:bg-primary/10 group-hover:text-primary'
+                      }`}>
+                        {item.type === 'bid' ? <ShieldCheck size={20} /> : item.type === 'tech-bid' ? <Zap size={20} /> : item.type === 'bid-rewrite' ? <Edit3 size={20} /> : <FileText size={20} />}
+                      </div>
+                      <div>
+                        <h4 className="font-bold text-slate-800 group-hover:text-primary transition-colors">{item.name}</h4>
+                        <div className="flex items-center gap-3 mt-1">
+                          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{item.date}</span>
+                          <span className="text-[10px] font-bold text-slate-300">•</span>
+                          <span className="text-[10px] font-bold text-slate-400 italic">{item.project}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right flex items-center gap-6">
+                      <div className="text-right">
+                        <p className="text-xs text-slate-400 mb-1">解析日期</p>
+                        <p className="text-sm font-bold text-slate-700">{item.date}</p>
+                      </div>
+                      <button className="p-2 hover:bg-primary/10 hover:text-primary text-slate-300 rounded-lg transition-colors">
+                        <ChevronRight size={20} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+            </div>
+            {parsingHistory.length > historyItemsPerPage && (
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+                   第 {historyPage} 页 / 共 {Math.ceil(parsingHistory.length / historyItemsPerPage)} 页
+                </span>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                    disabled={historyPage === 1}
+                    className="p-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-30 transition-all font-bold text-xs"
+                  >
+                    上一页
+                  </button>
+                  <button 
+                    onClick={() => setHistoryPage(p => Math.min(Math.ceil(parsingHistory.length / historyItemsPerPage), p + 1))}
+                    disabled={historyPage === Math.ceil(parsingHistory.length / historyItemsPerPage)}
+                    className="p-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-30 transition-all font-bold text-xs"
+                  >
+                    下一页
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-      {/* New Project Modal */}
       <AnimatePresence>
         {showNewProjectModal && (
           <div className="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm">

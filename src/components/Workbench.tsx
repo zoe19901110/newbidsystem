@@ -18,6 +18,8 @@ import {
   AlertTriangle,
   FileSearch,
   ShieldCheck,
+  Zap,
+  Edit3,
   BrainCircuit,
   History,
   ArrowRight,
@@ -52,7 +54,6 @@ import {
   Minus,
   List,
   LayoutGrid,
-  Edit3,
   LogOut,
   X,
   Monitor,
@@ -240,18 +241,57 @@ const Workbench: React.FC<WorkbenchProps> = ({
   const [analysisProgress, setAnalysisProgress] = useState(0);
   const [showResultPage, setShowResultPage] = useState(false);
   const [analyzingType, setAnalyzingType] = useState<'tender' | 'ai-bid'>('tender');
+  const [inspectionHistory, setInspectionHistory] = useLocalStorage('inspection-history', [
+    { id: 'bh-1', name: '投标文件 V3.0', date: '2026-05-11 13:51', status: '进行中', basis: '太湖南岸休闲农业观光风情带一期高新区段建设项目.pdf', checkStatus: [0, 0, 0] },
+    { id: 'bh-2', name: '投标文件 V2.0', date: '2026-05-11 13:39', status: '进行中', basis: '太湖南岸休闲农业观光风情带一期高新区段建设项目.pdf', checkStatus: [1, 2, 0] },
+    { id: 'bh-3', name: '投标文件 V1.0', date: '2026-05-08 17:22', status: '已完成', basis: '太湖南岸休闲农业观光风情带一期高新区段建设项目.pdf', checkStatus: [1, 1, 1] },
+  ]);
+  const [showInspectionHistory, setShowInspectionHistory] = useState(false);
   const [aiBidHistory, setAiBidHistory] = useLocalStorage('ai-bid-history', [
     { id: '1', type: '资信标', name: '资信投标文件-初稿', status: '待完善', date: '2026-05-07', progress: 65 },
     { id: '2', type: '技术标', name: '技术方案-精简版', status: '已完成', date: '2026-05-05', progress: 100 }
   ]);
-  const [parsingHistory, setParsingHistory] = useLocalStorage('workbench-parsing-history', [
-    { name: '原始招标文件解析', date: '2026-05-01' },
-    { name: '第一次答疑文件解析', date: '2026-05-03' }
+  const [bidRewriteHistory, setBidRewriteHistory] = useLocalStorage('bid-rewrite-history', [
+    { id: 'rw-1', name: '投标函改写-专业版', date: '2026-05-08', status: '已完成', progress: 100 },
+    { id: 'rw-2', name: '工程量清单说明优化', date: '2026-05-10', status: '进行中', progress: 45 }
   ]);
+  const [parsingHistory, setParsingHistory] = useLocalStorage('workbench-parsing-history', [
+    { id: 'h1', name: '原始招标文件解析', date: '2026-05-01' },
+    { id: 'h2', name: '第一次答疑文件解析', date: '2026-05-03' },
+    { id: 'h3', name: '第二次答疑文件解析', date: '2026-05-05' },
+    { id: 'h4', name: '技术参数对比报告', date: '2026-05-06' },
+    { id: 'h5', name: '商务风险识别报告', date: '2026-05-07' },
+    { id: 'h6', name: '招标文件深度全解析', date: '2026-05-08' },
+    { id: 'h7', name: '关键条款提取列表', date: '2026-05-09' },
+  ]);
+  const [historyPage, setHistoryPage] = useState(1);
+  const itemsPerPage = 5;
+
+  const handleOpenReport = (item?: any) => {
+    // In a real app, you'd use the item ID or project ID
+    const url = window.location.origin + `?view=report&projectId=${projectData.id || 'default'}&historyId=${item?.id || 'latest'}`;
+    window.open(url, '_blank');
+  };
   const [quota, setQuota] = useLocalStorage('parsing-quota-v2', { total: 100, remaining: 100 });
   const [wordQuota, setWordQuota] = useLocalStorage('word-quota', { total: 50000, remaining: 42500 });
+  const [inspectionQuota, setInspectionQuota] = useLocalStorage('inspection-quota', { total: 50, remaining: 42 });
+  const [comparisonQuota, setComparisonQuota] = useLocalStorage('comparison-quota', { total: 30, remaining: 25 });
+  const [comparisonHistory, setComparisonHistory] = useLocalStorage('comparison-history', [
+    { id: 'ch-1', name: '德州市长河大道198号办公楼维修项目二期（室外及附属维修）1.nDZTF等3份文件', date: '2026/04/29 11:49', status: '进行中', projectCode: 'PRJ-202604291149-001', fileCount: 3, riskScore: '-', detailStatus: '检查失败' },
+  ]);
+  const [showComparisonHistory, setShowComparisonHistory] = useState(false);
 
   const handleCreateAiBid = (type: string) => {
+    if (type === '资信标') {
+      const url = window.location.origin + `?view=bid-creation&projectId=${projectData?.id || 'default'}`;
+      window.open(url, '_blank');
+      return;
+    }
+    if (type === '技术标') {
+      const url = window.location.origin + `?view=tech-bid-creation&projectId=${projectData?.id || 'default'}`;
+      window.open(url, '_blank');
+      return;
+    }
     setAnalyzingType('ai-bid');
     setIsAnalyzing(true);
     setAnalysisProgress(0);
@@ -279,6 +319,21 @@ const Workbench: React.FC<WorkbenchProps> = ({
   };
 
   const handleContinueAiBid = (item: any) => {
+    if (item.type === '资信标') {
+      const url = window.location.origin + `?view=bid-creation&projectId=${projectData?.id || 'default'}&historyId=${item.id}`;
+      window.open(url, '_blank');
+      return;
+    }
+    if (item.type === '技术标') {
+      const url = window.location.origin + `?view=tech-bid-creation&projectId=${projectData?.id || 'default'}&historyId=${item.id}`;
+      window.open(url, '_blank');
+      return;
+    }
+    if (item.type === '标书改写') {
+      const url = window.location.origin + `?view=bid-rewrite&projectId=${projectData?.id || 'default'}&historyId=${item.id}`;
+      window.open(url, '_blank');
+      return;
+    }
     if (item.status === '已完成') {
       setCurrentPhase('inspection');
     } else {
@@ -821,12 +876,28 @@ const Workbench: React.FC<WorkbenchProps> = ({
                   onSelect={setSelectedCard} 
                   isPaused={isPaused} 
                   aiBidHistory={aiBidHistory}
+                  bidRewriteHistory={bidRewriteHistory}
                   handleCreateAiBid={handleCreateAiBid}
                   handleContinueAiBid={handleContinueAiBid}
                   wordQuota={wordQuota}
                 />
               )}
-              {currentPhase === 'inspection' && <InspectionPhase onUploadMargin={() => setShowMarginUploadModal(true)} onSelect={setSelectedCard} isPaused={isPaused} />}
+              {currentPhase === 'inspection' && (
+                <InspectionPhase 
+                  onUploadMargin={() => setShowMarginUploadModal(true)} 
+                  onSelect={setSelectedCard} 
+                  isPaused={isPaused}
+                  inspectionHistory={inspectionHistory}
+                  showHistory={showInspectionHistory}
+                  onToggleHistory={() => setShowInspectionHistory(!showInspectionHistory)}
+                  setCurrentPhase={setCurrentPhase}
+                  inspectionQuota={inspectionQuota}
+                  comparisonHistory={comparisonHistory}
+                  showComparisonHistory={showComparisonHistory}
+                  onToggleComparisonHistory={() => setShowComparisonHistory(!showComparisonHistory)}
+                  comparisonQuota={comparisonQuota}
+                />
+              )}
               {currentPhase === 'archiving' && <ArchivingPhase onOpenArchiving={() => setShowArchivingModal(true)} onOpenAttachments={() => setShowAttachmentsModal(true)} isPaused={isPaused} />}
             </div>
           ) : (
@@ -3685,6 +3756,15 @@ const PreparationPhase = ({
 
   const [activeOtherMaterial, setActiveOtherMaterial] = useState<{ id: string; label: string } | null>(null);
   
+  const [historyPage, setHistoryPage] = useState(1);
+  const itemsPerPage = 5;
+
+  const handleOpenReport = (item?: any) => {
+    // Show a quick local loading state before opening (simulating preparation)
+    const url = window.location.origin + `?view=report&projectId=${projectData?.id || 'default'}&historyId=${item?.id || 'latest'}`;
+    window.open(url, '_blank');
+  };
+  
   // New states for upload parsing
   const [activeUpload, setActiveUpload] = useState<{ id: string; label: string } | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -4532,7 +4612,7 @@ const PreparationPhase = ({
               利用 AI 深度解析最新招标文件与答疑文件，自动更新项目核心要素。
             </p>
             <button 
-              onClick={handleImmediateParsing}
+              onClick={() => handleOpenReport()}
               className="w-full py-3 bg-white text-blue-600 rounded-xl font-black text-sm shadow-md hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
             >
               立即解析 <ArrowRight size={16} />
@@ -4554,6 +4634,46 @@ const PreparationPhase = ({
               全部
             </button>
           </div>
+          <div className="divide-y divide-slate-50">
+            {parsingHistory
+              .slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage)
+              .map((item, idx) => (
+                <div 
+                  key={idx}
+                  onClick={() => handleOpenReport(item)}
+                  className="px-5 py-3 hover:bg-slate-50 transition-colors cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-bold text-slate-700 group-hover:text-primary transition-colors truncate flex-1 mr-2">{item.name}</p>
+                    <ArrowUpRight size={12} className="text-slate-300 group-hover:text-primary transition-colors" />
+                  </div>
+                  <p className="text-[10px] text-slate-400 font-medium">{item.date}</p>
+                </div>
+              ))}
+          </div>
+          {parsingHistory.length > itemsPerPage && (
+            <div className="px-5 py-3 bg-slate-50/30 border-t border-slate-100 flex items-center justify-between">
+              <div className="flex gap-2">
+                <button 
+                  onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
+                  disabled={historyPage === 1}
+                  className="p-1 rounded-md hover:bg-white border border-transparent hover:border-slate-200 disabled:opacity-30 disabled:hover:bg-transparent"
+                >
+                  <ChevronLeft size={14} />
+                </button>
+                <button 
+                  onClick={() => setHistoryPage(p => Math.min(Math.ceil(parsingHistory.length / itemsPerPage), p + 1))}
+                  disabled={historyPage === Math.ceil(parsingHistory.length / itemsPerPage)}
+                  className="p-1 rounded-md hover:bg-white border border-transparent hover:border-slate-200 disabled:opacity-30 disabled:hover:bg-transparent"
+                >
+                  <ChevronRight size={14} />
+                </button>
+              </div>
+              <span className="text-[10px] text-slate-400 font-bold">
+                {historyPage} / {Math.ceil(parsingHistory.length / itemsPerPage)}
+              </span>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -4566,6 +4686,7 @@ const ProductionPhase = ({
   onSelect, 
   isPaused, 
   aiBidHistory, 
+  bidRewriteHistory,
   handleCreateAiBid, 
   handleContinueAiBid,
   wordQuota
@@ -4574,12 +4695,13 @@ const ProductionPhase = ({
   onSelect: (id: string | null) => void, 
   isPaused: boolean,
   aiBidHistory: any[],
+  bidRewriteHistory: any[],
   handleCreateAiBid: (type: string) => void,
   handleContinueAiBid: (item: any) => void,
   wordQuota: { total: number, remaining: number }
 }) => {
-  const [showHistory, setShowHistory] = useState(false);
-  const [historyTab, setHistoryTab] = useState<'ai-bid' | 'bid-rewrite'>('ai-bid');
+  const [showAiBidHistory, setShowAiBidHistory] = useState(false);
+  const [showRewriteHistory, setShowRewriteHistory] = useState(false);
   const [isAiBidActive, setIsAiBidActive] = useState(false);
   const [isRewriteActive, setIsRewriteActive] = useState(false);
 
@@ -4647,12 +4769,12 @@ const ProductionPhase = ({
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    setHistoryTab('ai-bid');
-                    setShowHistory(!showHistory || historyTab !== 'ai-bid');
+                    setShowAiBidHistory(!showAiBidHistory);
+                    if (!showAiBidHistory) setShowRewriteHistory(false);
                   }}
-                  className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${showHistory && historyTab === 'ai-bid' ? 'bg-primary text-white shadow-sm' : 'text-primary hover:bg-primary/5 border border-primary/20'}`}
+                  className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${showAiBidHistory ? 'bg-primary text-white shadow-sm' : 'text-primary hover:bg-primary/5 border border-primary/20'}`}
                 >
-                  {showHistory && historyTab === 'ai-bid' ? '收起历史' : '查看历史'}
+                  {showAiBidHistory ? '收起历史' : '查看历史'}
                 </button>
               </div>
               <p className="text-slate-400 group-hover:text-slate-500 text-sm mb-auto leading-relaxed transition-colors font-medium">利用AI大模型技术自动生成资信、技术等投标文件内容，提升编写效率。</p>
@@ -4785,19 +4907,19 @@ const ProductionPhase = ({
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    setHistoryTab('bid-rewrite');
-                    setShowHistory(!showHistory || historyTab !== 'bid-rewrite');
+                    setShowRewriteHistory(!showRewriteHistory);
+                    if (!showRewriteHistory) setShowAiBidHistory(false);
                   }}
-                  className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${showHistory && historyTab === 'bid-rewrite' ? 'bg-primary text-white shadow-sm' : 'text-primary hover:bg-primary/5 border border-primary/20'}`}
+                  className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${showRewriteHistory ? 'bg-primary text-white shadow-sm' : 'text-primary hover:bg-primary/5 border border-primary/20'}`}
                 >
-                  {showHistory && historyTab === 'bid-rewrite' ? '收起历史' : '查看历史'}
+                  {showRewriteHistory ? '收起历史' : '查看历史'}
                 </button>
               </div>
               <p className="text-slate-400 group-hover:text-slate-500 text-sm mb-auto leading-relaxed transition-colors font-medium">智能优化标书语言表达，增强逻辑性与结构性，使内容更符合评委习惯。</p>
               
               <div className="mt-8">
                 <button 
-                  onClick={() => setIsRewriteActive(true)}
+                  onClick={() => window.open(window.location.origin + '?view=bid-rewrite', '_blank')}
                   className={`w-full py-3.5 bg-white border border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-primary font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   立即开始
@@ -4835,7 +4957,7 @@ const ProductionPhase = ({
                 <button 
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (!isPaused) window.open('https://micro.bqpoint.com/epoint-web-micro/frame/pages/quickymakingrbd/rewrite_step_1.html?historytype=2&listtype=fastbid&prevpage=%E6%A0%87%E6%A1%A5%C2%B7AI%E7%BC%96%E6%A0%87', '_blank');
+                    if (!isPaused) window.open(window.location.origin + '?view=bid-rewrite', '_blank');
                   }}
                   disabled={isPaused}
                   className={`flex items-center justify-between p-3.5 rounded-xl border border-blue-100 bg-blue-50 transition-all gap-3 group/btn ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
@@ -4862,8 +4984,9 @@ const ProductionPhase = ({
         </div>
       </div>
 
+      {/* AI Bid History Section */}
       <AnimatePresence>
-        {showHistory && (
+        {showAiBidHistory && (
           <motion.div 
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
@@ -4871,37 +4994,17 @@ const ProductionPhase = ({
             className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
           >
             <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-8">
-                <button 
-                  onClick={() => setHistoryTab('ai-bid')}
-                  className={`flex items-center gap-3 transition-all relative pb-1 ${historyTab === 'ai-bid' ? 'opacity-100' : 'opacity-40 hover:opacity-100'}`}
-                >
-                  <div className="p-2 rounded-lg bg-orange-50 text-orange-500 shadow-sm border border-orange-100">
-                    <History size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">AI 编标生成历史</h3>
-                    <p className="text-[10px] text-slate-400 font-medium">查看并继续完成编标任务</p>
-                  </div>
-                  {historyTab === 'ai-bid' && <motion.div layoutId="activeTab" className="absolute -bottom-7 left-0 right-0 h-1 bg-primary rounded-t-full" />}
-                </button>
-                <div className="h-8 w-px bg-slate-200"></div>
-                <button 
-                  onClick={() => setHistoryTab('bid-rewrite')}
-                  className={`flex items-center gap-3 transition-all relative pb-1 ${historyTab === 'bid-rewrite' ? 'opacity-100' : 'opacity-40 hover:opacity-100'}`}
-                >
-                  <div className="p-2 rounded-lg bg-blue-50 text-blue-500 shadow-sm border border-blue-100">
-                    <Languages size={20} />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-slate-900">标书改写记录</h3>
-                    <p className="text-[10px] text-slate-400 font-medium">回顾已完成的改写任务</p>
-                  </div>
-                  {historyTab === 'bid-rewrite' && <motion.div layoutId="activeTab" className="absolute -bottom-7 left-0 right-0 h-1 bg-primary rounded-t-full" />}
-                </button>
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-orange-50 text-orange-500 shadow-sm border border-orange-100">
+                  <History size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">AI 编标生成历史</h3>
+                  <p className="text-[10px] text-slate-400 font-medium">查看并继续完成编标任务</p>
+                </div>
               </div>
               <button 
-                onClick={() => setShowHistory(false)}
+                onClick={() => setShowAiBidHistory(false)}
                 className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
               >
                 <X size={20} />
@@ -4925,8 +5028,12 @@ const ProductionPhase = ({
                     <tr key={history.id} className="hover:bg-slate-50/80 transition-colors group/row">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-lg ${history.type === '资信标' ? 'bg-blue-50 text-blue-500' : 'bg-indigo-50 text-indigo-500'} group-hover/row:scale-110 transition-transform duration-300 shadow-sm border border-current opacity-20`}>
-                            {history.type === '资信标' ? <ShieldCheck size={16} /> : <Wrench size={16} />}
+                          <div className={`p-2 rounded-lg ${
+                            history.type === '资信标' ? 'bg-blue-50 text-blue-500' : 
+                            history.type === '技术标' ? 'bg-indigo-50 text-indigo-500' :
+                            'bg-amber-50 text-amber-500'
+                          } group-hover/row:scale-110 transition-transform duration-300 shadow-sm border border-current opacity-20`}>
+                            {history.type === '资信标' ? <ShieldCheck size={16} /> : history.type === '技术标' ? <Zap size={16} /> : <Edit3 size={16} />}
                           </div>
                           <div>
                             <div className="text-sm font-bold text-slate-700">{history.name}</div>
@@ -4991,11 +5098,140 @@ const ProductionPhase = ({
         )}
       </AnimatePresence>
 
+      {/* Bid Rewrite History Section */}
+      <AnimatePresence>
+        {showRewriteHistory && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden mt-8"
+          >
+            <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-blue-50 text-blue-500 shadow-sm border border-blue-100">
+                  <Languages size={20} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-900">标书改写记录</h3>
+                  <p className="text-[10px] text-slate-400 font-medium">回顾已完成的改写任务</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowRewriteHistory(false)}
+                className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/80 border-b border-slate-100">
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">改写任务名称</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">最后更新</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">进度</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">当前状态</th>
+                    <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {bidRewriteHistory.length > 0 ? bidRewriteHistory.map((history) => (
+                    <tr key={history.id} className="hover:bg-slate-50/80 transition-colors group/row">
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-blue-50 text-blue-500 group-hover/row:scale-110 transition-transform duration-300 shadow-sm border border-blue-100 opacity-80">
+                            <Languages size={16} />
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-slate-700">{history.name}</div>
+                            <div className="text-[10px] text-slate-400 font-medium">ID: {history.id} · 智能改写优化</div>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-sm text-slate-500 font-bold">{history.date}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 bg-slate-100 rounded-full h-2 overflow-hidden w-24">
+                            <div 
+                              className={`h-full transition-all duration-1000 ${history.progress === 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                              style={{ width: `${history.progress}%` }}
+                            />
+                          </div>
+                          <span className="text-[11px] font-mono font-bold text-slate-500">{history.progress}%</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`text-[11px] font-bold px-2.5 py-1 rounded-full flex items-center gap-2 w-fit border ${
+                          history.status === '已完成' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-blue-50 text-blue-600 border-blue-100'
+                        }`}>
+                          {history.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button 
+                          onClick={() => {
+                            if (isPaused) return;
+                            window.open(window.location.origin + '?view=bid-rewrite', '_blank');
+                          }}
+                          disabled={isPaused}
+                          className="px-5 py-2.5 rounded-xl bg-slate-50 text-slate-600 hover:bg-primary hover:text-white transition-all font-bold text-xs shadow-sm"
+                        >
+                          {history.status === '已完成' ? '查看详情' : '继续改写'}
+                        </button>
+                      </td>
+                    </tr>
+                  )) : (
+                    <tr>
+                      <td colSpan={5} className="px-6 py-20 text-center">
+                        <div className="flex flex-col items-center justify-center text-slate-300">
+                          <div className="p-6 rounded-full bg-slate-50 mb-4 border border-dashed border-slate-200">
+                            <Languages size={48} className="opacity-10" />
+                          </div>
+                          <p className="text-base font-bold text-slate-400">暂无改写记录</p>
+                        </div>
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     </div>
   );
 };
 
-const InspectionPhase = ({ onUploadMargin, onSelect, isPaused }: { onUploadMargin: () => void, onSelect: (id: string | null) => void, isPaused: boolean }) => (
+const InspectionPhase = ({ 
+  onUploadMargin, 
+  onSelect, 
+  isPaused, 
+  inspectionHistory, 
+  showHistory, 
+  onToggleHistory, 
+  setCurrentPhase, 
+  inspectionQuota,
+  comparisonHistory,
+  showComparisonHistory,
+  onToggleComparisonHistory,
+  comparisonQuota
+}: { 
+  onUploadMargin: () => void, 
+  onSelect: (id: string | null) => void, 
+  isPaused: boolean,
+  inspectionHistory: any[],
+  showHistory: boolean,
+  onToggleHistory: () => void,
+  setCurrentPhase: (phase: string) => void,
+  inspectionQuota: { total: number, remaining: number },
+  comparisonHistory: any[],
+  showComparisonHistory: boolean,
+  onToggleComparisonHistory: () => void,
+  comparisonQuota: { total: number, remaining: number }
+}) => (
   <div className="space-y-8 min-h-[600px]">
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
       <div className="bg-white border border-slate-200 rounded-xl p-8 hover:bg-primary hover:text-white hover:shadow-xl hover:shadow-primary/20 transition-all group cursor-pointer flex flex-col hover:-translate-y-1 duration-300">
@@ -5005,7 +5241,8 @@ const InspectionPhase = ({ onUploadMargin, onSelect, isPaused }: { onUploadMargi
         <h4 className="text-xl font-bold mb-3">保证金回执上传</h4>
         <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-10 leading-relaxed min-h-[4.5rem] transition-colors">上传保证金缴纳回执，确保投标资格有效性。</p>
         <button 
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             if (isPaused) {
               alert('此项目已暂停');
               return;
@@ -5023,7 +5260,7 @@ const InspectionPhase = ({ onUploadMargin, onSelect, isPaused }: { onUploadMargi
         onMouseLeave={() => onSelect(null)}
         onClick={() => {
           if (!isPaused) {
-            window.open('https://biaoshujiancha.graybruce.cn', '_blank');
+            setCurrentPhase('inspection');
           }
         }}
         className="bg-white border border-slate-200 rounded-xl p-8 text-slate-900 hover:bg-primary hover:text-white hover:shadow-xl hover:shadow-primary/20 group hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden flex flex-col"
@@ -5032,8 +5269,25 @@ const InspectionPhase = ({ onUploadMargin, onSelect, isPaused }: { onUploadMargi
           <div className="bg-blue-50 text-blue-600 p-3 rounded-lg group-hover:bg-white/10 group-hover:text-white backdrop-blur-sm transition-colors">
             <FileText size={24} />
           </div>
+          <div className="flex flex-col items-end gap-2 shrink-0 text-right">
+            <div className="text-[10px] font-bold text-slate-400 group-hover:text-blue-100 uppercase tracking-wider mb-0.5 translate-y-0.5">可用次数</div>
+            <div className="text-sm font-bold text-primary group-hover:text-white whitespace-nowrap">
+              {inspectionQuota.remaining} <span className="text-[10px] opacity-60 font-normal">/ {inspectionQuota.total}</span>
+            </div>
+          </div>
         </div>
-        <h4 className="text-xl font-bold mb-3">标书检查</h4>
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-xl font-bold">标书检查</h4>
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleHistory();
+            }}
+            className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${showHistory ? 'bg-primary text-white shadow-sm' : 'text-primary hover:bg-primary/5 border border-primary/20 group-hover:border-white/30 group-hover:text-white group-hover:bg-white/10'}`}
+          >
+            {showHistory ? '收起历史' : '查看历史'}
+          </button>
+        </div>
         <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-10 leading-relaxed min-h-[4.5rem] transition-colors">系统将自动扫描标书完整性、雷同性及格式规范，确保投标文件的有效性，降低废标风险。</p>
           <button 
             onClick={(e) => {
@@ -5042,13 +5296,14 @@ const InspectionPhase = ({ onUploadMargin, onSelect, isPaused }: { onUploadMargi
                 alert('此项目已暂停');
                 return;
               }
-              window.open('https://biaoshujiancha.graybruce.cn', '_blank');
+              setCurrentPhase('inspection');
             }}
             className={`mt-auto w-full py-3.5 bg-white border border-slate-200 text-slate-700 group-hover:border-transparent group-hover:text-primary font-bold rounded-lg hover:bg-blue-50 transition-all flex items-center justify-center gap-2 ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             开始检查
           </button>
       </div>
+
 
       <div 
         onClick={() => {
@@ -5058,10 +5313,29 @@ const InspectionPhase = ({ onUploadMargin, onSelect, isPaused }: { onUploadMargi
         }}
         className="bg-white border border-slate-200 rounded-xl p-8 hover:bg-primary hover:text-white hover:shadow-xl hover:shadow-primary/20 transition-all group cursor-pointer flex flex-col hover:-translate-y-1 duration-300"
       >
-        <div className="p-3 rounded-lg w-fit mb-6 bg-indigo-50 text-indigo-600 group-hover:bg-white/10 group-hover:text-white transition-colors">
-          <Layers size={24} />
+        <div className="flex justify-between items-start mb-6">
+          <div className="p-3 rounded-lg w-fit bg-indigo-50 text-indigo-600 group-hover:bg-white/10 group-hover:text-white transition-colors">
+            <Layers size={24} />
+          </div>
+          <div className="flex flex-col items-end gap-2 shrink-0 text-right">
+            <div className="text-[10px] font-bold text-slate-400 group-hover:text-blue-100 uppercase tracking-wider mb-0.5 translate-y-0.5">可用次数</div>
+            <div className="text-sm font-bold text-primary group-hover:text-white whitespace-nowrap">
+              {comparisonQuota.remaining} <span className="text-[10px] opacity-60 font-normal">/ {comparisonQuota.total}</span>
+            </div>
+          </div>
         </div>
-        <h4 className="text-xl font-bold mb-3">多版本比对</h4>
+        <div className="flex items-center justify-between mb-3">
+          <h4 className="text-xl font-bold">多版本比对</h4>
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onToggleComparisonHistory();
+            }}
+            className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${showComparisonHistory ? 'bg-primary text-white shadow-sm' : 'text-primary hover:bg-primary/5 border border-primary/20 group-hover:border-white/30 group-hover:text-white group-hover:bg-white/10'}`}
+          >
+            {showComparisonHistory ? '收起历史' : '查看历史'}
+          </button>
+        </div>
         <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-10 leading-relaxed min-h-[4.5rem] transition-colors">支持对不同版本的标书进行快速比对，自动识别差异内容，提高审核效率。</p>
         <button 
           onClick={(e) => {
@@ -5104,7 +5378,8 @@ const InspectionPhase = ({ onUploadMargin, onSelect, isPaused }: { onUploadMargi
         <h4 className="text-xl font-bold mb-3">模拟开标</h4>
         <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-10 leading-relaxed min-h-[4.5rem] transition-colors">模拟线上开标流程，提前熟悉系统操作，进行数字证书（CA）验证及加解密测试，确保正式开标顺利进行。</p>
         <button 
-          onClick={() => {
+          onClick={(e) => {
+            e.stopPropagation();
             if (isPaused) {
               alert('此项目已暂停');
               return;
@@ -5116,6 +5391,180 @@ const InspectionPhase = ({ onUploadMargin, onSelect, isPaused }: { onUploadMargi
         </button>
       </div>
     </div>
+
+    <AnimatePresence>
+      {showHistory && (
+        <motion.div 
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
+        >
+          <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-50 text-blue-500 shadow-sm border border-blue-100">
+                <History size={20} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">标书检查历史记录</h3>
+                <p className="text-[10px] text-slate-400 font-medium">查看并追踪往期检查结果</p>
+              </div>
+            </div>
+            <button 
+              onClick={onToggleHistory}
+              className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-100">
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">检查名称</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">检查依据</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">状态</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">最后更新</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {inspectionHistory.map((history) => (
+                  <tr key={history.id} className="hover:bg-slate-50/80 transition-colors group/row">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-blue-50 text-blue-500 group-hover/row:scale-110 transition-transform duration-300 shadow-sm border border-blue-100 opacity-80">
+                          <FileSearch size={16} />
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-slate-700">{history.name}</div>
+                          <div className="text-[10px] text-slate-400 font-medium">ID: {history.id} · 自动化检查</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">检查内容</span>
+                        <div className="flex items-center gap-2 text-xs text-slate-600 font-medium truncate max-w-xs">
+                          <FileText size={12} className="text-slate-400" />
+                          {history.basis}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        {['资信', '技术', '经济'].map((tag, idx) => {
+                          const s = history.checkStatus[idx];
+                          return (
+                            <div key={tag} className="flex flex-col items-center gap-1">
+                              <span className="text-[9px] text-slate-400 font-bold">{tag}</span>
+                              {s === 1 ? <CheckCircle2 size={14} className="text-green-500" /> :
+                               s === 2 ? <div className="text-blue-500 italic text-[10px] font-black">进行中</div> :
+                               s === 3 ? <AlertTriangle size={14} className="text-orange-500" /> :
+                               <div className="size-3.5 rounded-full border border-slate-200" />}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-slate-500 font-bold">{history.date}</td>
+                    <td className="px-6 py-4 text-right">
+                      <button 
+                        onClick={() => {
+                          if (isPaused) return;
+                          setCurrentPhase('inspection');
+                        }}
+                        disabled={isPaused}
+                        className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-all ${
+                          history.status === '已完成' 
+                            ? 'bg-green-50 text-green-600 hover:bg-green-600 hover:text-white' 
+                            : 'bg-primary/10 text-primary hover:bg-primary hover:text-white'
+                        }`}
+                      >
+                        {history.status === '已完成' ? '查看结果' : '继续检查'}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+
+    <AnimatePresence>
+      {showComparisonHistory && (
+        <motion.div 
+          initial={{ opacity: 0, height: 0 }}
+          animate={{ opacity: 1, height: 'auto' }}
+          exit={{ opacity: 0, height: 0 }}
+          className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
+        >
+          <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-indigo-50 text-indigo-500 shadow-sm border border-indigo-100">
+                <History size={20} />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-slate-900">多版本比对历史记录</h3>
+                <p className="text-[10px] text-slate-400 font-medium">查看并追踪往期比对结果</p>
+              </div>
+            </div>
+            <button 
+              onClick={onToggleComparisonHistory}
+              className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
+            >
+              <X size={20} />
+            </button>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="bg-slate-50/80 border-b border-slate-100">
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">项目名称</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">项目编号</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">检查时间</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">文件数</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">风险评估</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">状态</th>
+                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">操作</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {comparisonHistory.map((history) => (
+                  <tr key={history.id} className="hover:bg-slate-50/80 transition-colors group/row">
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-bold text-slate-700">{history.name}</div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-xs text-slate-400 font-medium">{history.projectCode}</div>
+                    </td>
+                    <td className="px-6 py-4 text-xs text-slate-500 font-bold">{history.date}</td>
+                    <td className="px-6 py-4 text-xs text-slate-500 font-bold">{history.fileCount} 份</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-center size-8 rounded border border-slate-200 text-slate-400 text-sm">
+                        {history.riskScore}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2 py-1 bg-red-50 text-red-500 text-[10px] font-bold rounded border border-red-100">
+                        {history.detailStatus}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {/* Actions if any */}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   </div>
 );
 

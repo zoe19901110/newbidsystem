@@ -28,7 +28,7 @@ interface LoginProps {
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [view, setView] = useState<'login' | 'forgot' | 'select-enterprise' | 'register'>('login');
-  const [loginType, setLoginType] = useState<'account' | 'phone'>('account');
+  const [loginType, setLoginType] = useState<'account' | 'phone'>('phone');
   const [loginMode, setLoginMode] = useState<'form' | 'qr'>('form');
   const [selectedEnterprise, setSelectedEnterprise] = useState<string | null>(null);
   const [rememberDefault, setRememberDefault] = useState(false);
@@ -37,6 +37,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [countdown, setCountdown] = useState(0);
+  const [showRegisterConfirm, setShowRegisterConfirm] = useState(false);
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -200,9 +201,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
   return (
     <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 sm:p-6 overflow-auto">
-      <div className="bg-white rounded-[40px] shadow-2xl flex overflow-hidden w-[1060px] h-[720px] shrink-0">
+      <div className="bg-white rounded-[32px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] flex overflow-hidden w-[1060px] min-h-[600px] h-auto md:h-[640px] shrink-0">
         {/* Left Sidebar */}
-        <div className="w-[520px] bg-primary px-14 flex flex-col justify-center relative overflow-hidden shrink-0 hidden md:flex">
+        <div className="w-[480px] bg-primary px-12 flex flex-col justify-center relative overflow-hidden shrink-0 hidden md:flex">
           {/* Background Pattern */}
           <div className="absolute inset-0 opacity-10 pointer-events-none">
             <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] rounded-full bg-white blur-3xl" />
@@ -210,25 +211,38 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
           </div>
 
           <div className="relative z-10">
-            <h1 className="text-5xl font-extrabold text-white mb-16 tracking-tight whitespace-nowrap">
-              投标协同管理平台
-            </h1>
+            <div className="flex items-center gap-4 mb-14">
+              <div className="size-[56px] bg-[#0066FF] rounded-[16px] flex flex-col items-center justify-center shadow-lg shrink-0 relative overflow-hidden">
+                <div className="absolute top-[-4px] w-[120%] h-[36px]">
+                  <svg viewBox="0 0 100 50" className="w-full h-full">
+                    <path d="M-5 45 Q 50 0 105 45" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="12" />
+                    <path d="M-5 55 Q 50 10 105 55" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="12" />
+                  </svg>
+                </div>
+                <div className="mt-6 z-10">
+                  <span className="text-white text-[10px] font-bold font-sans tracking-[0.05em]">BQPOINT</span>
+                </div>
+              </div>
+              <h1 className="text-[40px] font-extrabold text-white tracking-tight whitespace-nowrap">
+                投标协同管理平台
+              </h1>
+            </div>
 
-            <div className="space-y-12">
+            <div className="space-y-8">
               {features.map((feature, index) => (
                 <motion.div 
                   key={index}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: index * 0.1 }}
-                  className="flex items-start gap-6 group"
+                  className="flex items-start gap-5 group"
                 >
-                  <div className="mt-1 p-3 bg-white/10 rounded-xl group-hover:bg-white/20 transition-colors">
-                    {React.cloneElement(feature.icon as React.ReactElement, { size: 32 })}
+                  <div className="mt-1 p-2.5 bg-white/10 rounded-[14px] group-hover:bg-white/20 transition-colors">
+                    {React.cloneElement(feature.icon as React.ReactElement, { size: 28 })}
                   </div>
                   <div>
-                    <h3 className="text-xl font-bold text-white mb-2 whitespace-nowrap">{feature.title}</h3>
-                    <p className="text-base text-white/60 leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis">{feature.desc}</p>
+                    <h3 className="text-[19px] font-bold text-white mb-1.5 whitespace-nowrap">{feature.title}</h3>
+                    <p className="text-[15px] text-white/70 leading-relaxed whitespace-nowrap overflow-hidden text-ellipsis">{feature.desc}</p>
                   </div>
                 </motion.div>
               ))}
@@ -237,7 +251,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         </div>
 
         {/* Right Content */}
-        <div className="w-[540px] flex flex-col items-center justify-center px-16 py-16 bg-white relative shrink-0">
+        <div className="flex-1 flex flex-col items-center justify-center px-12 py-12 bg-white relative shrink-0">
           {/* QR Code Login Indicator (Top Right) */}
           {selectionTab === 'enterprise' && view === 'login' && (
             <div 
@@ -297,30 +311,11 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
               >
                 {loginMode === 'form' ? (
                   <>
-                    <h2 className="text-4xl font-extrabold text-slate-900 mb-8 tracking-tight text-center whitespace-nowrap">
-                      欢迎登录
-                    </h2>
-
                     {/* Tabs */}
-                    <div className="flex border-b border-slate-100 mb-10 justify-center gap-8 w-full">
-                      <button 
-                        onClick={() => setLoginType('account')}
-                        className={`pb-4 px-2 text-lg font-bold transition-all relative whitespace-nowrap ${
-                          loginType === 'account' ? 'text-primary' : 'text-slate-400 hover:text-slate-600'
-                        }`}
-                      >
-                        账号登录
-                        {loginType === 'account' && (
-                          <motion.div 
-                            layoutId="activeTab" 
-                            className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full"
-                            transition={{ type: "spring", stiffness: 400, damping: 35 }}
-                          />
-                        )}
-                      </button>
+                    <div className="flex border-b border-slate-100 mb-10 justify-center gap-12 w-full">
                       <button 
                         onClick={() => setLoginType('phone')}
-                        className={`pb-4 px-2 text-lg font-bold transition-all relative whitespace-nowrap ${
+                        className={`pb-4 px-2 text-[20px] font-bold transition-all relative whitespace-nowrap ${
                           loginType === 'phone' ? 'text-primary' : 'text-slate-400 hover:text-slate-600'
                         }`}
                       >
@@ -333,130 +328,157 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                           />
                         )}
                       </button>
+                      <button 
+                        onClick={() => setLoginType('account')}
+                        className={`pb-4 px-2 text-[20px] font-bold transition-all relative whitespace-nowrap ${
+                          loginType === 'account' ? 'text-primary' : 'text-slate-400 hover:text-slate-600'
+                        }`}
+                      >
+                        账号登录
+                        {loginType === 'account' && (
+                          <motion.div 
+                            layoutId="activeTab" 
+                            className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t-full"
+                            transition={{ type: "spring", stiffness: 400, damping: 35 }}
+                          />
+                        )}
+                      </button>
                     </div>
 
                     {/* Form */}
-                    <div className="space-y-8 w-full">
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-400">
-                          {loginType === 'account' ? <User size={28} /> : <Smartphone size={28} />}
-                        </div>
-                        <input 
-                          type="text" 
-                          value={loginType === 'account' ? username : phone}
-                          onChange={(e) => loginType === 'account' ? setUsername(e.target.value) : setPhone(e.target.value)}
-                          placeholder="请输入手机号"
-                          className="w-full pl-16 pr-6 py-6 bg-slate-50 border border-slate-200 rounded-[24px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-xl font-medium"
-                        />
-                      </div>
-
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-400">
-                          {loginType === 'account' ? <Lock size={28} /> : <ShieldIcon size={28} />}
-                        </div>
-                        {loginType === 'account' ? (
-                          <input 
-                            type="password" 
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="请输入登录密码"
-                            className="w-full pl-16 pr-6 py-6 bg-slate-50 border border-slate-200 rounded-[24px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-xl font-medium"
-                          />
-                        ) : (
-                          <div className="flex flex-col gap-4">
-                            <div className="flex gap-4">
-                              <input 
-                                type="text" 
-                                value={code}
-                                onChange={(e) => setCode(e.target.value)}
-                                placeholder="请输入验证码"
-                                className="flex-1 pl-16 pr-6 py-6 bg-slate-50 border border-slate-200 rounded-[24px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-xl font-medium"
-                              />
-                              <button 
-                                onClick={startCountdown}
-                                disabled={countdown > 0}
-                                className="px-8 bg-slate-50 border border-slate-200 rounded-[24px] text-lg font-bold text-primary hover:bg-slate-100 disabled:text-slate-400 transition-all min-w-[140px]"
-                              >
-                                {countdown > 0 ? `${countdown}s` : '获取验证码'}
-                              </button>
-                            </div>
-                            {simulatedCode && (
-                              <motion.div 
-                                initial={{ opacity: 0, y: -5 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                className="text-primary text-sm font-bold px-2"
-                              >
-                                [模拟短信] 您的验证码是：{simulatedCode}
-                              </motion.div>
-                            )}
+                    <div className="w-full flex flex-col">
+                      <div className="flex flex-col gap-6">
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-400">
+                            {loginType === 'account' ? <User size={24} /> : <Smartphone size={24} />}
                           </div>
-                        )}
-                      </div>
+                          <input 
+                            type="text" 
+                            value={loginType === 'account' ? username : phone}
+                            onChange={(e) => loginType === 'account' ? setUsername(e.target.value) : setPhone(e.target.value)}
+                            placeholder="请输入手机号"
+                            className="w-full pl-16 pr-6 pt-4 pb-4 bg-slate-50 border border-slate-200 rounded-[20px] focus:bg-white focus:ring-[4px] focus:ring-primary/10 focus:border-primary outline-none transition-all text-lg font-medium"
+                          />
+                        </div>
 
-                      <div className="flex flex-col gap-2 px-2">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-6">
-                            {loginType === 'account' && (
-                              <label className="flex items-center gap-2 cursor-pointer group">
+                        <div className="relative">
+                          <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-400">
+                            {loginType === 'account' ? <Lock size={24} /> : <ShieldIcon size={24} />}
+                          </div>
+                          {loginType === 'account' ? (
+                            <input 
+                              type="password" 
+                              value={password}
+                              onChange={(e) => setPassword(e.target.value)}
+                              placeholder="请输入登录密码"
+                              className="w-full pl-16 pr-6 pt-4 pb-4 bg-slate-50 border border-slate-200 rounded-[20px] focus:bg-white focus:ring-[4px] focus:ring-primary/10 focus:border-primary outline-none transition-all text-lg font-medium"
+                            />
+                          ) : (
+                            <div className="flex flex-col relative">
+                              <div className="flex gap-4">
                                 <input 
-                                  type="checkbox" 
-                                  checked={rememberPassword}
-                                  onChange={(e) => setRememberPassword(e.target.checked)}
-                                  className="size-4 rounded border-slate-300 text-primary focus:ring-primary"
+                                  type="text" 
+                                  value={code}
+                                  onChange={(e) => setCode(e.target.value)}
+                                  placeholder="请输入验证码"
+                                  className="flex-1 pl-16 pr-6 pt-4 pb-4 bg-slate-50 border border-slate-200 rounded-[20px] focus:bg-white focus:ring-[4px] focus:ring-primary/10 focus:border-primary outline-none transition-all text-lg font-medium"
                                 />
-                                <span className="text-sm text-slate-500 group-hover:text-slate-700 transition-colors whitespace-nowrap">
-                                  记住密码
-                                </span>
-                              </label>
-                            )}
-                            {loginType === 'phone' && selectionTab === 'personal' && (
-                              <span className="text-xs text-slate-400">
-                                未注册的手机号验证后将自动创建新账号
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-4">
-                            {selectionTab === 'personal' && loginType === 'account' && (
-                              <button 
-                                onClick={() => setView('register')}
-                                className="text-sm text-primary font-bold hover:underline whitespace-nowrap"
-                              >
-                                立即注册
-                              </button>
-                            )}
-                            <button 
-                              onClick={() => setView('forgot')}
-                              className="text-sm text-primary font-bold hover:underline whitespace-nowrap"
-                            >
-                              忘记密码?
-                            </button>
-                          </div>
+                                <button 
+                                  onClick={startCountdown}
+                                  disabled={countdown > 0}
+                                  className="px-6 bg-slate-50 border border-slate-200 rounded-[20px] text-base font-bold text-primary hover:bg-slate-100 disabled:text-slate-400 transition-all min-w-[130px]"
+                                >
+                                  {countdown > 0 ? `${countdown}s` : '获取验证码'}
+                                </button>
+                              </div>
+                              <AnimatePresence>
+                                {simulatedCode && (
+                                  <motion.div 
+                                    initial={{ opacity: 0, y: -5 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -5 }}
+                                    className="text-primary text-sm font-bold px-2 absolute -bottom-7 left-0"
+                                  >
+                                    [模拟短信] 您的验证码是：{simulatedCode}
+                                  </motion.div>
+                                )}
+                              </AnimatePresence>
+                            </div>
+                          )}
                         </div>
-
-                        <label className="text-xs text-slate-400 whitespace-nowrap flex items-center gap-2 cursor-pointer group">
-                          <input 
-                            type="checkbox" 
-                            checked={agreed}
-                            onChange={(e) => setAgreed(e.target.checked)}
-                            className="size-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer"
-                          />
-                          <span className="group-hover:text-slate-600 transition-colors">
-                            登录视为您已阅读并同意 <span className="text-primary hover:underline cursor-pointer">服务条款</span> 和 <span className="text-primary hover:underline cursor-pointer">隐私政策</span>
-                          </span>
-                        </label>
                       </div>
 
-                      <button 
-                        onClick={handleInitialLogin}
-                        className="w-full py-5 bg-primary text-white rounded-[12px] font-bold text-xl shadow-xl shadow-primary/20 hover:shadow-2xl hover:bg-primary/90 active:scale-[0.98] transition-all mt-6"
-                      >
-                        确认登录
-                      </button>
+                      <div className="min-h-[44px] flex flex-col justify-center mt-3 px-2 mb-6">
+                        <div className="flex flex-col gap-3 w-full">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-6">
+                              {loginType === 'account' ? (
+                                <label className="flex items-center gap-2 cursor-pointer group">
+                                  <input 
+                                    type="checkbox" 
+                                    checked={rememberPassword}
+                                    onChange={(e) => setRememberPassword(e.target.checked)}
+                                    className="size-4 rounded border-slate-300 text-primary focus:ring-primary"
+                                  />
+                                  <span className="text-sm text-slate-500 group-hover:text-slate-700 transition-colors whitespace-nowrap">
+                                    记住密码
+                                  </span>
+                                </label>
+                              ) : (
+                                <div className="flex-1" />
+                              )}
+                            </div>
+                            <div className="flex items-center gap-4">
+                              {loginType === 'account' && selectionTab === 'enterprise' && (
+                                <button 
+                                  onClick={() => setShowRegisterConfirm(true)}
+                                  className="text-sm text-primary font-bold hover:underline whitespace-nowrap"
+                                >
+                                  立即注册
+                                </button>
+                              )}
+                              {loginType !== 'phone' && (
+                                <button 
+                                  onClick={() => setView('forgot')}
+                                  className="text-sm text-primary font-bold hover:underline whitespace-nowrap"
+                                >
+                                  忘记密码?
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <label className="text-xs text-slate-400 whitespace-nowrap flex items-center gap-2 cursor-pointer group">
+                            <input 
+                              type="checkbox" 
+                              checked={agreed}
+                              onChange={(e) => setAgreed(e.target.checked)}
+                              className="size-4 rounded border-slate-300 text-primary focus:ring-primary cursor-pointer"
+                            />
+                            <span className="group-hover:text-slate-600 transition-colors">
+                              登录视为您已阅读并同意 <span className="text-primary hover:underline cursor-pointer">服务条款</span> 和 <span className="text-primary hover:underline cursor-pointer">隐私政策</span>
+                            </span>
+                          </label>
+                        </div>
+                      </div>
+ 
+                       <button 
+                         onClick={handleInitialLogin}
+                         className="w-full py-4 bg-primary text-white rounded-[16px] font-bold text-[18px] shadow-lg shadow-primary/25 hover:shadow-xl hover:bg-primary/90 active:scale-[0.98] transition-all relative overflow-hidden"
+                       >
+                         {loginType === 'phone' && selectionTab === 'personal' ? '注册/登录' : '确认登录'}
+                       </button>
 
                       <div className="flex justify-end mt-4">
                         <button
                           onClick={() => {
-                            setSelectionTab(selectionTab === 'personal' ? 'enterprise' : 'personal');
+                            const newTab = selectionTab === 'personal' ? 'enterprise' : 'personal';
+                            setSelectionTab(newTab);
+                            if (newTab === 'personal') {
+                              setLoginType('phone');
+                              setAgreed(true);
+                            } else {
+                              setAgreed(false);
+                            }
                           }}
                           className="text-slate-400 text-sm hover:text-primary transition-colors flex items-center gap-0.5 group"
                         >
@@ -511,20 +533,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                       <div className="flex items-center gap-2 text-slate-500">
                         <Smartphone size={20} />
                         <span className="text-sm font-medium">打开 [标证通APP] 首页扫一扫</span>
-                      </div>
-                      <div className="flex gap-10 mt-4 border-t border-slate-100 pt-8 w-full justify-center">
-                        <div className="flex flex-col items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity cursor-pointer">
-                          <div className="size-10 rounded-full bg-slate-100 flex items-center justify-center">
-                            <User size={20} />
-                          </div>
-                          <span className="text-[10px] font-bold text-slate-500">免密登录</span>
-                        </div>
-                        <div className="flex flex-col items-center gap-1.5 opacity-60 hover:opacity-100 transition-opacity cursor-pointer">
-                          <div className="size-10 rounded-full bg-slate-100 flex items-center justify-center">
-                            <ShieldIcon size={20} />
-                          </div>
-                          <span className="text-[10px] font-bold text-slate-500">CA验证</span>
-                        </div>
                       </div>
                     </div>
 
@@ -660,25 +668,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     </button>
                   </div>
 
-                  <div className="relative">
-                    <input 
-                      type={showRegPassword ? "text" : "password"}
-                      value={regPassword}
-                      onChange={(e) => setRegPassword(e.target.value)}
-                      placeholder="密码"
-                      className="w-full px-6 py-5 bg-white border border-slate-200 rounded-[8px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-lg font-medium"
-                    />
-                    <button 
-                      onClick={() => setShowRegPassword(!showRegPassword)}
-                      className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
-                    >
-                      {showRegPassword ? <EyeOff size={24} /> : <Eye size={24} />}
-                    </button>
-                  </div>
-
                   <button 
                     onClick={() => {
                       triggerError('注册成功，请登录');
+                      setLoginType('phone');
                       setView('login');
                     }}
                     className="w-full py-5 bg-primary text-white rounded-[8px] font-bold text-xl shadow-xl shadow-primary/20 hover:shadow-2xl hover:bg-primary/90 active:scale-[0.98] transition-all mt-4"
@@ -691,7 +684,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                       注册即代表同意 <span className="text-primary cursor-pointer hover:underline">《用户协议》</span>
                     </div>
                     <div className="text-sm text-slate-600">
-                      已有账号，<button onClick={() => setView('login')} className="text-primary font-bold hover:underline">立即登录</button>
+                      已有账号，<button onClick={() => {
+                        setLoginType('phone');
+                        setView('login');
+                      }} className="text-primary font-bold hover:underline">立即登录</button>
                     </div>
                   </div>
                 </div>
@@ -856,6 +852,47 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   </button>
                 </div>
               </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Registration Confirmation Modal */}
+          <AnimatePresence>
+            {showRegisterConfirm && (
+              <div className="absolute inset-0 z-[100] flex items-center justify-center p-8">
+                <motion.div 
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  className="bg-white rounded-[32px] p-8 max-w-[380px] w-full shadow-2xl border border-slate-100 relative"
+                >
+                  <div className="size-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6 mx-auto">
+                    <AlertCircle size={32} />
+                  </div>
+                  <h3 className="text-2xl font-extrabold text-slate-900 mb-2 text-center">提示</h3>
+                  <p className="text-slate-500 text-lg mb-8 leading-relaxed text-center font-medium">
+                    请先注册个人账号
+                  </p>
+                  <div className="flex gap-4">
+                    <button 
+                      onClick={() => setShowRegisterConfirm(false)}
+                      className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-base hover:bg-slate-200 transition-colors"
+                    >
+                      取消
+                    </button>
+                    <button 
+                      onClick={() => {
+                        setShowRegisterConfirm(false);
+                        setSelectionTab('personal');
+                        setLoginType('phone');
+                        setView('login');
+                      }}
+                      className="flex-1 py-4 bg-primary text-white rounded-2xl font-bold text-base shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors"
+                    >
+                      确定
+                    </button>
+                  </div>
+                </motion.div>
+              </div>
             )}
           </AnimatePresence>
         </div>
