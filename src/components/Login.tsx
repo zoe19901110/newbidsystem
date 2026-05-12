@@ -33,7 +33,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [selectedEnterprise, setSelectedEnterprise] = useState<string | null>(null);
   const [rememberDefault, setRememberDefault] = useState(false);
   const [showOnlyDefault, setShowOnlyDefault] = useState(false);
-  const [selectionTab, setSelectionTab] = useState<'personal' | 'enterprise'>('enterprise');
+  const [selectionTab, setSelectionTab] = useState<'personal' | 'enterprise'>('personal');
   const [searchQuery, setSearchQuery] = useState('');
   const [agreed, setAgreed] = useState(false);
   const [countdown, setCountdown] = useState(0);
@@ -48,6 +48,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
   // Registration state
   const [regPhone, setRegPhone] = useState('');
   const [regCode, setRegCode] = useState('');
+  const [regUsername, setRegUsername] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
 
@@ -253,7 +254,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
         {/* Right Content */}
         <div className="flex-1 flex flex-col items-center justify-center px-12 py-12 bg-white relative shrink-0">
           {/* QR Code Login Indicator (Top Right) */}
-          {selectionTab === 'enterprise' && view === 'login' && (
+          {view === 'login' && (
             <div 
               className="absolute top-0 right-0 size-28 cursor-pointer z-20 group"
               onClick={() => setLoginMode(loginMode === 'form' ? 'qr' : 'form')}
@@ -429,9 +430,9 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                               )}
                             </div>
                             <div className="flex items-center gap-4">
-                              {loginType === 'account' && selectionTab === 'enterprise' && (
+                              {loginType === 'account' && selectionTab === 'personal' && (
                                 <button 
-                                  onClick={() => setShowRegisterConfirm(true)}
+                                  onClick={() => setView('register')}
                                   className="text-sm text-primary font-bold hover:underline whitespace-nowrap"
                                 >
                                   立即注册
@@ -633,61 +634,75 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="w-full max-w-[380px] flex flex-col items-center"
+                className="w-full max-w-[380px]"
               >
-                <h2 className="text-4xl font-extrabold text-slate-900 mb-12 tracking-tight text-center whitespace-nowrap">
+                <h2 className="text-4xl font-extrabold text-slate-900 mb-10 tracking-tight whitespace-nowrap">
                   个人用户注册
                 </h2>
 
-                <div className="space-y-6 w-full">
-                  <div>
+                <div className="space-y-5 w-full">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-400">
+                      <Smartphone size={24} />
+                    </div>
                     <input 
                       type="text" 
                       value={regPhone}
                       onChange={(e) => setRegPhone(e.target.value)}
-                      placeholder="手机号"
-                      className="w-full px-6 py-5 bg-white border border-slate-200 rounded-[8px] focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-lg font-medium"
+                      placeholder="请输入手机号"
+                      className="w-full pl-16 pr-6 pt-4 pb-4 bg-slate-50 border border-slate-200 rounded-[20px] focus:bg-white focus:ring-[4px] focus:ring-primary/10 focus:border-primary outline-none transition-all text-lg font-medium"
                     />
                   </div>
 
-                  <div className="flex gap-0 border border-slate-200 rounded-[8px] overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary">
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-400">
+                      <User size={24} />
+                    </div>
                     <input 
                       type="text" 
-                      value={regCode}
-                      onChange={(e) => setRegCode(e.target.value)}
-                      placeholder="请输入验证码"
-                      className="flex-1 px-6 py-5 bg-white outline-none text-lg font-medium"
+                      value={regUsername}
+                      onChange={(e) => setRegUsername(e.target.value)}
+                      placeholder="设置用户名"
+                      className="w-full pl-16 pr-6 pt-4 pb-4 bg-slate-50 border border-slate-200 rounded-[20px] focus:bg-white focus:ring-[4px] focus:ring-primary/10 focus:border-primary outline-none transition-all text-lg font-medium"
                     />
-                    <div className="w-px bg-slate-200 my-4"></div>
-                    <button 
-                      onClick={startCountdown}
-                      disabled={countdown > 0}
-                      className="px-6 bg-white text-primary font-bold hover:text-primary/80 disabled:text-slate-400 transition-colors whitespace-nowrap"
-                    >
-                      发送验证码
-                    </button>
+                  </div>
+
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-slate-400">
+                      <Lock size={24} />
+                    </div>
+                    <input 
+                      type="password" 
+                      value={regPassword}
+                      onChange={(e) => setRegPassword(e.target.value)}
+                      placeholder="设置登录密码"
+                      className="w-full pl-16 pr-6 pt-4 pb-4 bg-slate-50 border border-slate-200 rounded-[20px] focus:bg-white focus:ring-[4px] focus:ring-primary/10 focus:border-primary outline-none transition-all text-lg font-medium"
+                    />
                   </div>
 
                   <button 
                     onClick={() => {
-                      triggerError('注册成功，请登录');
-                      setLoginType('phone');
+                      if (regPhone.length === 0 || regUsername.length === 0 || regPassword.length === 0) {
+                        triggerError('请填写完整注册信息');
+                        return;
+                      }
+                      triggerError('注册成功，请使用新账号登录');
+                      setUsername(regPhone);
+                      setLoginType('account');
+                      setSelectionTab('personal');
                       setView('login');
                     }}
-                    className="w-full py-5 bg-primary text-white rounded-[8px] font-bold text-xl shadow-xl shadow-primary/20 hover:shadow-2xl hover:bg-primary/90 active:scale-[0.98] transition-all mt-4"
+                    className="w-full py-4 bg-primary text-white rounded-[20px] font-bold text-xl shadow-xl shadow-primary/20 hover:shadow-2xl hover:bg-primary/90 active:scale-[0.98] transition-all mt-4"
                   >
-                    注册
+                    立即注册
                   </button>
 
                   <div className="flex items-center justify-between mt-4">
-                    <div className="text-sm text-slate-500">
-                      注册即代表同意 <span className="text-primary cursor-pointer hover:underline">《用户协议》</span>
+                    <div className="text-xs text-slate-400">
+                      注册即代表同意 <span className="text-primary hover:underline cursor-pointer">服务协议</span> 与 <span className="text-primary hover:underline cursor-pointer">隐私政策</span>
                     </div>
-                    <div className="text-sm text-slate-600">
-                      已有账号，<button onClick={() => {
-                        setLoginType('phone');
-                        setView('login');
-                      }} className="text-primary font-bold hover:underline">立即登录</button>
+                    <div className="text-sm text-slate-400">
+                      已有账号？<button onClick={() => setView('login')} className="text-primary font-bold hover:underline">去登录</button>
                     </div>
                   </div>
                 </div>
@@ -852,47 +867,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                   </button>
                 </div>
               </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Registration Confirmation Modal */}
-          <AnimatePresence>
-            {showRegisterConfirm && (
-              <div className="absolute inset-0 z-[100] flex items-center justify-center p-8">
-                <motion.div 
-                  initial={{ scale: 0.9, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.9, opacity: 0 }}
-                  className="bg-white rounded-[32px] p-8 max-w-[380px] w-full shadow-2xl border border-slate-100 relative"
-                >
-                  <div className="size-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-6 mx-auto">
-                    <AlertCircle size={32} />
-                  </div>
-                  <h3 className="text-2xl font-extrabold text-slate-900 mb-2 text-center">提示</h3>
-                  <p className="text-slate-500 text-lg mb-8 leading-relaxed text-center font-medium">
-                    请先注册个人账号
-                  </p>
-                  <div className="flex gap-4">
-                    <button 
-                      onClick={() => setShowRegisterConfirm(false)}
-                      className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-base hover:bg-slate-200 transition-colors"
-                    >
-                      取消
-                    </button>
-                    <button 
-                      onClick={() => {
-                        setShowRegisterConfirm(false);
-                        setSelectionTab('personal');
-                        setLoginType('phone');
-                        setView('login');
-                      }}
-                      className="flex-1 py-4 bg-primary text-white rounded-2xl font-bold text-base shadow-lg shadow-primary/20 hover:bg-primary/90 transition-colors"
-                    >
-                      确定
-                    </button>
-                  </div>
-                </motion.div>
-              </div>
             )}
           </AnimatePresence>
         </div>
