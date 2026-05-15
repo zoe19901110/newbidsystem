@@ -196,6 +196,12 @@ const Workbench: React.FC<WorkbenchProps> = ({
   const [showAttachmentsModal, setShowAttachmentsModal] = useState(false);
   const [showDocDropdown, setShowDocDropdown] = useState(false);
   
+  const [remarks, setRemarks] = useLocalStorage('workbench-remarks', [
+    { id: 1, user: '张工', role: '技术专家', time: '2026-03-25 10:30', content: '此项目的技术参数建议再次核实，特别是智慧交通感应设备的5G响应标准。' },
+    { id: 2, user: '李经理', role: '商务总监', time: '2026-03-26 15:45', content: '商务条款中的交付周期较为紧张，我们需要在澄清环节重点关注。' },
+  ]);
+  const [newRemarkText, setNewRemarkText] = useState('');
+  
   // Archiving States
   const [openingRecords, setOpeningRecords] = useLocalStorage('workbench_openingRecords', [
     { units: '某某建设集团有限公司', price: 12105000, rank: '1', isWinner: true, isSelf: true },
@@ -554,7 +560,7 @@ const Workbench: React.FC<WorkbenchProps> = ({
                   onClick={() => {
                     if (hasAnyDoc) {
                       setViewingDoc(latestDocKey!);
-                      setActiveRightTab('annotation');
+                      setActiveRightTab('remark');
                     }
                   }}
                   className={`ml-4 px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 border ${
@@ -593,7 +599,7 @@ const Workbench: React.FC<WorkbenchProps> = ({
                             <button
                               onClick={() => {
                                 setViewingDoc('tender-doc');
-                                setActiveRightTab('annotation');
+                                setActiveRightTab('remark');
                                 setShowDocDropdown(false);
                               }}
                               className="w-full px-4 py-2.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-primary flex items-center gap-2 group"
@@ -609,7 +615,7 @@ const Workbench: React.FC<WorkbenchProps> = ({
                             key={doc}
                             onClick={() => {
                               setViewingDoc(doc);
-                              setActiveRightTab('annotation');
+                              setActiveRightTab('remark');
                               setShowDocDropdown(false);
                             }}
                             className="w-full px-4 py-2.5 text-left text-xs font-medium text-slate-700 hover:bg-slate-50 hover:text-primary flex items-center justify-between group"
@@ -889,12 +895,18 @@ const Workbench: React.FC<WorkbenchProps> = ({
                   isPaused={isPaused}
                   inspectionHistory={inspectionHistory}
                   showHistory={showInspectionHistory}
-                  onToggleHistory={() => setShowInspectionHistory(!showInspectionHistory)}
+                  onToggleHistory={() => {
+                    setShowInspectionHistory(!showInspectionHistory);
+                    if (!showInspectionHistory) setShowComparisonHistory(false);
+                  }}
                   setCurrentPhase={setCurrentPhase}
                   inspectionQuota={inspectionQuota}
                   comparisonHistory={comparisonHistory}
                   showComparisonHistory={showComparisonHistory}
-                  onToggleComparisonHistory={() => setShowComparisonHistory(!showComparisonHistory)}
+                  onToggleComparisonHistory={() => {
+                    setShowComparisonHistory(!showComparisonHistory);
+                    if (!showComparisonHistory) setShowInspectionHistory(false);
+                  }}
                   comparisonQuota={comparisonQuota}
                 />
               )}
@@ -902,7 +914,7 @@ const Workbench: React.FC<WorkbenchProps> = ({
             </div>
           ) : (
             <>
-              {subView === 'annotation-view' && <AnnotationView onBack={() => setSubView('main')} isPaused={isPaused} />}
+              {subView === 'annotation-view' && <RemarksView onBack={() => setSubView('main')} isPaused={isPaused} />}
               {subView === 'key-info-view' && <KeyInfoView onBack={() => setSubView('main')} isPaused={isPaused} />}
               {subView === 'qualification-view' && <QualificationView onBack={() => setSubView('main')} isPaused={isPaused} />}
               {subView === 'risk-view' && <RiskView onBack={() => setSubView('main')} isPaused={isPaused} />}
@@ -948,12 +960,12 @@ const Workbench: React.FC<WorkbenchProps> = ({
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className={`fixed right-0 top-0 bottom-0 ${activeRightTab === 'annotation' || activeRightTab === 'material-market' ? 'w-[1200px]' : activeRightTab === 'resource-center' ? 'w-[600px]' : 'w-[450px]'} bg-white shadow-[-20px_0_50px_rgba(0,0,0,0.1)] z-[80] flex flex-col border-l border-slate-100 transition-all duration-500`}
+              className={`fixed right-0 top-0 bottom-0 ${activeRightTab === 'remark' || activeRightTab === 'material-market' ? 'w-[1200px]' : activeRightTab === 'resource-center' ? 'w-[600px]' : 'w-[450px]'} bg-white shadow-[-20px_0_50px_rgba(0,0,0,0.1)] z-[80] flex flex-col border-l border-slate-100 transition-all duration-500`}
             >
               <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
                 <div className="flex items-center gap-3">
                   <div className={`size-10 rounded-xl flex items-center justify-center text-white shadow-lg ${
-                    activeRightTab === 'annotation' ? 'bg-blue-500' :
+                    activeRightTab === 'remark' ? 'bg-blue-500' :
                     activeRightTab === 'key-info' ? 'bg-indigo-500' :
                     activeRightTab === 'qualification' ? 'bg-emerald-500' :
                     activeRightTab === 'disqualification' ? 'bg-rose-500' : 
@@ -961,7 +973,7 @@ const Workbench: React.FC<WorkbenchProps> = ({
                     activeRightTab === 'resource-center' ? 'bg-amber-500' : 
                     activeRightTab === 'operation-log' ? 'bg-slate-800' : 'bg-purple-500'
                   }`}>
-                    {activeRightTab === 'annotation' && <PenTool size={20} />}
+                    {activeRightTab === 'remark' && <MessageSquare size={20} />}
                     {activeRightTab === 'key-info' && <BrainCircuit size={20} />}
                     {activeRightTab === 'qualification' && <ShieldCheck size={20} />}
                     {activeRightTab === 'disqualification' && <ShieldAlert size={20} />}
@@ -971,7 +983,7 @@ const Workbench: React.FC<WorkbenchProps> = ({
                   </div>
                   <div>
                     <h3 className="font-bold text-slate-900">
-                      {activeRightTab === 'annotation' && '在线批注'}
+                      {activeRightTab === 'remark' && '备注'}
                       {activeRightTab === 'key-info' && '关键信息提取'}
                       {activeRightTab === 'qualification' && '资格审查'}
                       {activeRightTab === 'disqualification' && '风险建议'}
@@ -994,8 +1006,8 @@ const Workbench: React.FC<WorkbenchProps> = ({
                 </button>
               </div>
 
-              <div className={`flex-1 overflow-y-auto ${activeRightTab === 'annotation' || activeRightTab === 'resource-center' ? 'p-0' : 'p-8'}`}>
-                {activeRightTab === 'annotation' && (
+              <div className={`flex-1 overflow-y-auto ${activeRightTab === 'remark' || activeRightTab === 'resource-center' ? 'p-0' : 'p-8'}`}>
+                {activeRightTab === 'remark' && (
                   <div className="flex h-full bg-slate-50">
                     {/* Document Viewer Area */}
                     <div className="flex-1 overflow-y-auto p-12 bg-slate-200/50 shadow-inner">
@@ -1033,9 +1045,6 @@ const Workbench: React.FC<WorkbenchProps> = ({
                                 <span className="font-bold text-blue-700 block mb-1">2.1 技术参数要求：</span>
                                 本项目涉及的所有智慧交通感应设备必须符合国家 GB/T 12345-2023 标准，且具备行业领先水平，支持 5G 毫秒级响应。
                               </p>
-                              <div className="absolute -right-3 top-1/2 -translate-y-1/2 size-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-black shadow-xl border-4 border-white cursor-pointer hover:scale-125 transition-all animate-pulse">
-                                1
-                              </div>
                             </div>
                             <p className="mt-6">2.2 投标有效期：自投标截止之日起 90 个日历天内有效。</p>
                           </section>
@@ -1050,9 +1059,6 @@ const Workbench: React.FC<WorkbenchProps> = ({
                                 <span className="font-bold text-orange-700 block mb-1">3.1 交付周期：</span>
                                 中标人须在合同签订后 30 个日历天内完成所有设备的交付与安装调试，并确保系统上线运行。
                               </p>
-                              <div className="absolute -right-3 top-1/2 -translate-y-1/2 size-8 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-black shadow-xl border-4 border-white cursor-pointer hover:scale-125 transition-all animate-pulse">
-                                2
-                              </div>
                             </div>
                             <p className="mt-6 italic text-slate-400 text-base">注：逾期交付将面临每日合同总额 0.5% 的违约金处罚。</p>
                           </section>
@@ -1072,23 +1078,21 @@ const Workbench: React.FC<WorkbenchProps> = ({
                       </div>
                     </div>
 
-                    {/* Annotations Sidebar */}
+                    {/* Remarks Sidebar */}
                     <div className="w-96 border-l border-slate-200 bg-white flex flex-col">
                       <div className="p-6 border-b border-slate-100 bg-slate-50/50">
                         <h4 className="font-black text-slate-900 flex items-center justify-between">
                           <span className="flex items-center gap-2">
-                            <PenTool size={18} className="text-primary" />
-                            批注列表
+                            <MessageSquare size={18} className="text-primary" />
+                            备注列表
                           </span>
-                          <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] rounded-full">2 条记录</span>
+                          <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] rounded-full">{remarks.length} 条记录</span>
                         </h4>
                       </div>
+                      
                       <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                        {[
-                          { id: 1, user: '张工', role: '技术专家', time: '10:30', content: '此处技术参数需进一步核实，GB/T 标准可能有更新版本，需确认是否适用最新标准。', type: 'technical' },
-                          { id: 2, user: '李经理', role: '商务总监', time: '昨天', content: '30天的交付周期对于目前的供应链情况来说极具挑战，建议在答疑环节申请延长至45天。', type: 'business' },
-                        ].map((note, i) => (
-                          <div key={i} className="group relative bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:border-primary/30 transition-all cursor-pointer">
+                        {remarks.map((note) => (
+                          <div key={note.id} className="group relative bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:border-primary/30 transition-all">
                             <div className="flex items-center justify-between mb-4">
                               <div className="flex items-center gap-3">
                                 <div className="size-8 bg-slate-900 text-white rounded-xl flex items-center justify-center text-xs font-black">
@@ -1103,49 +1107,64 @@ const Workbench: React.FC<WorkbenchProps> = ({
                             </div>
                             <p className="text-sm text-slate-600 leading-relaxed font-medium">{note.content}</p>
                             
-                            <div className={`absolute -left-px top-6 w-1 h-12 rounded-r-full ${note.type === 'technical' ? 'bg-blue-500' : 'bg-orange-500'}`}></div>
-                            
-                            <div className="absolute -right-2 -top-2 size-6 bg-slate-900 text-white rounded-full flex items-center justify-center text-[10px] font-black border-2 border-white shadow-lg group-hover:scale-110 transition-transform">
-                              {note.id}
-                            </div>
-
-                            <div className="mt-4 pt-4 border-t border-slate-50 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="absolute -right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity">
                               <button 
                                 onClick={() => {
                                   if (isPaused) {
                                     alert('此项目已暂停');
                                     return;
                                   }
+                                  setRemarks(remarks.filter(r => r.id !== note.id));
                                 }}
-                                className={`text-[10px] font-bold text-primary hover:underline ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                className="size-6 bg-red-50 text-red-500 rounded-full flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors border border-red-100 shadow-sm"
                               >
-                                回复
-                              </button>
-                              <button 
-                                onClick={() => {
-                                  if (isPaused) {
-                                    alert('此项目已暂停');
-                                    return;
-                                  }
-                                }}
-                                className={`text-[10px] font-bold text-slate-400 hover:text-red-500 ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
-                              >
-                                删除
+                                <Trash2 size={12} />
                               </button>
                             </div>
                           </div>
                         ))}
-                        <button 
-                          onClick={() => {
-                            if (isPaused) {
-                              alert('此项目已暂停');
-                              return;
-                            }
-                          }}
-                          className={`w-full py-4 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 text-xs font-black hover:border-primary hover:text-primary hover:bg-primary/5 transition-all flex items-center justify-center gap-2 ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        >
-                          <Plus size={16} /> 添加新批注
-                        </button>
+
+                        {remarks.length === 0 && (
+                          <div className="py-20 text-center space-y-3">
+                            <div className="size-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-200">
+                              <MessageSquare size={32} />
+                            </div>
+                            <p className="text-sm text-slate-400 font-medium">暂无内容，点击下方添加备注</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="p-6 border-t border-slate-100 bg-white">
+                        <div className="space-y-4">
+                          <textarea 
+                            value={newRemarkText}
+                            onChange={(e) => setNewRemarkText(e.target.value)}
+                            placeholder="请输入备注内容..."
+                            className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-medium focus:bg-white focus:ring-4 focus:ring-primary/5 focus:border-primary outline-none transition-all resize-none h-32"
+                          />
+                          <button 
+                            onClick={() => {
+                              if (isPaused) {
+                                alert('此项目已暂停');
+                                return;
+                              }
+                              if (!newRemarkText.trim()) return;
+                              const newRemark = {
+                                id: Date.now(),
+                                user: '我',
+                                role: '项目负责人',
+                                time: new Date().toLocaleString(),
+                                content: newRemarkText
+                              };
+                              setRemarks([...remarks, newRemark]);
+                              setNewRemarkText('');
+                            }}
+                            className="w-full py-4 bg-primary text-white rounded-2xl text-sm font-black shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                          >
+                            <Plus size={18} />
+                            添加备注
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -4621,8 +4640,8 @@ const PreparationPhase = ({
         </div>
 
         {/* History Section in Sidebar */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col h-[400px]">
+          <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50 shrink-0">
             <h4 className="text-sm font-black text-slate-900 flex items-center gap-2">
               <History size={16} className="text-slate-400" />
               解析历史记录
@@ -4634,7 +4653,7 @@ const PreparationPhase = ({
               全部
             </button>
           </div>
-          <div className="divide-y divide-slate-50">
+          <div className="divide-y divide-slate-50 flex-1 overflow-y-auto custom-scrollbar">
             {parsingHistory
               .slice((historyPage - 1) * itemsPerPage, historyPage * itemsPerPage)
               .map((item, idx) => (
@@ -4652,7 +4671,7 @@ const PreparationPhase = ({
               ))}
           </div>
           {parsingHistory.length > itemsPerPage && (
-            <div className="px-5 py-3 bg-slate-50/30 border-t border-slate-100 flex items-center justify-between">
+            <div className="px-5 py-3 bg-slate-50/30 border-t border-slate-100 flex items-center justify-between shrink-0">
               <div className="flex gap-2">
                 <button 
                   onClick={() => setHistoryPage(p => Math.max(1, p - 1))}
@@ -4701,6 +4720,7 @@ const ProductionPhase = ({
   wordQuota: { total: number, remaining: number }
 }) => {
   const [showAiBidHistory, setShowAiBidHistory] = useState(false);
+  const [aiHistoryTab, setAiHistoryTab] = useState<'全部' | '资信标' | '技术标'>('全部');
   const [showRewriteHistory, setShowRewriteHistory] = useState(false);
   const [isAiBidActive, setIsAiBidActive] = useState(false);
   const [isRewriteActive, setIsRewriteActive] = useState(false);
@@ -4751,16 +4771,16 @@ const ProductionPhase = ({
           >
             {/* Front Side: Introduction */}
             <div 
-              className="absolute inset-0 bg-white border border-slate-200 rounded-xl p-8 shadow-sm hover:shadow-xl transition-all group cursor-pointer flex flex-col hover:-translate-y-1 duration-300"
+              className="absolute inset-0 bg-white border border-slate-200 rounded-xl p-8 hover:bg-primary hover:text-white shadow-sm hover:shadow-xl hover:shadow-primary/20 transition-all group cursor-pointer flex flex-col hover:-translate-y-1 duration-300"
               style={{ backfaceVisibility: 'hidden' }}
             >
               <div className="flex justify-between items-start mb-6">
-                <div className="p-3 rounded-lg bg-blue-50 text-blue-600 group-hover:bg-primary group-hover:text-white transition-colors">
+                <div className="p-3 rounded-lg bg-blue-50 text-blue-600 group-hover:bg-white/10 group-hover:text-white transition-colors">
                   <BrainCircuit size={24} />
                 </div>
                 <div className="text-right">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">可用额度</div>
-                  <div className="text-sm font-mono font-bold text-primary">{wordQuota.remaining.toLocaleString()}</div>
+                  <div className="text-[10px] font-bold text-slate-400 group-hover:text-white/60 uppercase tracking-wider mb-1 transition-colors">可用额度</div>
+                  <div className="text-sm font-mono font-bold text-primary group-hover:text-white transition-colors">{wordQuota.remaining.toLocaleString()} / {wordQuota.total.toLocaleString()}</div>
                 </div>
               </div>
 
@@ -4772,17 +4792,17 @@ const ProductionPhase = ({
                     setShowAiBidHistory(!showAiBidHistory);
                     if (!showAiBidHistory) setShowRewriteHistory(false);
                   }}
-                  className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${showAiBidHistory ? 'bg-primary text-white shadow-sm' : 'text-primary hover:bg-primary/5 border border-primary/20'}`}
+                  className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${showAiBidHistory ? 'bg-primary group-hover:bg-white group-hover:text-primary text-white shadow-sm' : 'text-primary group-hover:text-white border border-primary/20 group-hover:border-white/30 hover:bg-primary/5 group-hover:hover:bg-white/10'}`}
                 >
                   {showAiBidHistory ? '收起历史' : '查看历史'}
                 </button>
               </div>
-              <p className="text-slate-400 group-hover:text-slate-500 text-sm mb-auto leading-relaxed transition-colors font-medium">利用AI大模型技术自动生成资信、技术等投标文件内容，提升编写效率。</p>
+              <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-auto leading-relaxed transition-colors font-medium">利用AI大模型技术自动生成资信、技术等投标文件内容，提升编写效率。</p>
               
               <div className="mt-8">
                 <button 
                   onClick={() => setIsAiBidActive(true)}
-                  className="w-full py-3.5 bg-white border border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-primary font-bold rounded-lg transition-all flex items-center justify-center gap-2"
+                  className="w-full py-3.5 bg-white border border-slate-200 text-slate-700 group-hover:border-transparent group-hover:text-primary font-bold rounded-lg hover:bg-blue-50 transition-all flex items-center justify-center gap-2"
                 >
                   智能生成
                 </button>
@@ -4811,7 +4831,7 @@ const ProductionPhase = ({
                   onClick={() => setIsAiBidActive(false)}
                   className="p-1 px-2 text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-500 rounded font-bold transition-colors"
                 >
-                  返回介绍
+                  返回
                 </button>
               </div>
 
@@ -4890,16 +4910,16 @@ const ProductionPhase = ({
           >
             {/* Front Side: Introduction */}
             <div 
-              className="absolute inset-0 bg-white border border-slate-200 rounded-xl p-8 shadow-sm hover:shadow-xl transition-all group cursor-pointer flex flex-col hover:-translate-y-1 duration-300"
+              className="absolute inset-0 bg-white border border-slate-200 rounded-xl p-8 hover:bg-primary hover:text-white shadow-sm hover:shadow-xl hover:shadow-primary/20 transition-all group cursor-pointer flex flex-col hover:-translate-y-1 duration-300"
               style={{ backfaceVisibility: 'hidden' }}
             >
               <div className="flex justify-between items-start mb-6">
-                <div className="p-3 rounded-lg bg-slate-50 text-slate-600 group-hover:bg-primary group-hover:text-white transition-colors">
+                <div className="p-3 rounded-lg bg-slate-50 text-slate-600 group-hover:bg-white/10 group-hover:text-white transition-colors">
                   <Languages size={24} />
                 </div>
                 <div className="text-right">
-                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">改写额度</div>
-                  <div className="text-sm font-mono font-bold text-primary">{wordQuota.remaining.toLocaleString()}</div>
+                  <div className="text-[10px] font-bold text-slate-400 group-hover:text-white/60 uppercase tracking-wider mb-1 transition-colors">改写额度</div>
+                  <div className="text-sm font-mono font-bold text-primary group-hover:text-white transition-colors">{wordQuota.remaining.toLocaleString()} / {wordQuota.total.toLocaleString()}</div>
                 </div>
               </div>
               <div className="flex items-center justify-between mb-3">
@@ -4910,17 +4930,17 @@ const ProductionPhase = ({
                     setShowRewriteHistory(!showRewriteHistory);
                     if (!showRewriteHistory) setShowAiBidHistory(false);
                   }}
-                  className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${showRewriteHistory ? 'bg-primary text-white shadow-sm' : 'text-primary hover:bg-primary/5 border border-primary/20'}`}
+                  className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${showRewriteHistory ? 'bg-primary group-hover:bg-white group-hover:text-primary text-white shadow-sm' : 'text-primary group-hover:text-white border border-primary/20 group-hover:border-white/30 hover:bg-primary/5 group-hover:hover:bg-white/10'}`}
                 >
                   {showRewriteHistory ? '收起历史' : '查看历史'}
                 </button>
               </div>
-              <p className="text-slate-400 group-hover:text-slate-500 text-sm mb-auto leading-relaxed transition-colors font-medium">智能优化标书语言表达，增强逻辑性与结构性，使内容更符合评委习惯。</p>
+              <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-auto leading-relaxed transition-colors font-medium">智能优化标书语言表达，增强逻辑性与结构性，使内容更符合评委习惯。</p>
               
               <div className="mt-8">
                 <button 
                   onClick={() => window.open(window.location.origin + '?view=bid-rewrite', '_blank')}
-                  className={`w-full py-3.5 bg-white border border-slate-200 text-slate-700 hover:bg-blue-50 hover:text-primary font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  className={`w-full py-3.5 bg-white border border-slate-200 text-slate-700 group-hover:border-transparent group-hover:text-primary font-bold rounded-lg transition-all flex items-center justify-center gap-2 ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   立即开始
                 </button>
@@ -4949,7 +4969,7 @@ const ProductionPhase = ({
                   onClick={() => setIsRewriteActive(false)}
                   className="p-1 px-2 text-[10px] bg-slate-100 hover:bg-slate-200 text-slate-500 rounded font-bold transition-colors"
                 >
-                  返回介绍
+                  返回
                 </button>
               </div>
 
@@ -4994,20 +5014,27 @@ const ProductionPhase = ({
             className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
           >
             <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-orange-50 text-orange-500 shadow-sm border border-orange-100">
-                  <History size={20} />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-slate-900">AI 编标生成历史</h3>
-                  <p className="text-[10px] text-slate-400 font-medium">查看并继续完成编标任务</p>
-                </div>
+              <div className="flex bg-slate-100 p-1.5 rounded-2xl">
+                {(['全部', '资信标', '技术标'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setAiHistoryTab(tab)}
+                    className={`px-8 py-2 rounded-xl text-sm font-black transition-all ${
+                      aiHistoryTab === tab 
+                        ? 'bg-white text-primary shadow-sm' 
+                        : 'text-slate-400 hover:text-slate-500'
+                    }`}
+                  >
+                    {tab === '全部' ? '全部记录' : tab + '历史记录'}
+                  </button>
+                ))}
               </div>
+
               <button 
                 onClick={() => setShowAiBidHistory(false)}
-                className="p-2 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
+                className="p-2.5 hover:bg-slate-200/50 rounded-full text-slate-400 transition-colors"
               >
-                <X size={20} />
+                <X size={22} />
               </button>
             </div>
             
@@ -5024,7 +5051,9 @@ const ProductionPhase = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {aiBidHistory.length > 0 ? aiBidHistory.map((history) => (
+                  {aiBidHistory.filter(h => aiHistoryTab === '全部' || h.type === aiHistoryTab).length > 0 ? aiBidHistory
+                    .filter(h => aiHistoryTab === '全部' || h.type === aiHistoryTab)
+                    .map((history) => (
                     <tr key={history.id} className="hover:bg-slate-50/80 transition-colors group/row">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -5231,64 +5260,26 @@ const InspectionPhase = ({
   showComparisonHistory: boolean,
   onToggleComparisonHistory: () => void,
   comparisonQuota: { total: number, remaining: number }
-}) => (
-  <div className="space-y-8 min-h-[600px]">
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
-      <div className="bg-white border border-slate-200 rounded-xl p-8 hover:bg-primary hover:text-white hover:shadow-xl hover:shadow-primary/20 transition-all group cursor-pointer flex flex-col hover:-translate-y-1 duration-300">
-        <div className="p-3 rounded-lg w-fit mb-6 bg-emerald-50 text-emerald-600 group-hover:bg-white/10 group-hover:text-white transition-colors">
-          <Receipt size={24} />
-        </div>
-        <h4 className="text-xl font-bold mb-3">保证金回执上传</h4>
-        <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-10 leading-relaxed min-h-[4.5rem] transition-colors">上传保证金缴纳回执，确保投标资格有效性。</p>
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            if (isPaused) {
-              alert('此项目已暂停');
-              return;
-            }
-            onUploadMargin();
-          }}
-          className={`mt-auto w-full py-3.5 bg-white border border-slate-200 text-slate-700 group-hover:border-transparent group-hover:text-primary font-bold rounded-lg hover:bg-blue-50 transition-all ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          立即上传
-        </button>
-      </div>
+}) => {
+  const [inspectionCategory, setInspectionCategory] = useState<'全部' | '资信标' | '技术标' | '经济标'>('全部');
 
-      <div 
-        onMouseEnter={() => onSelect('bid-inspection')}
-        onMouseLeave={() => onSelect(null)}
-        onClick={() => {
-          if (!isPaused) {
-            setCurrentPhase('inspection');
-          }
-        }}
-        className="bg-white border border-slate-200 rounded-xl p-8 text-slate-900 hover:bg-primary hover:text-white hover:shadow-xl hover:shadow-primary/20 group hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden flex flex-col"
-      >
-        <div className="flex justify-between items-start mb-6">
-          <div className="bg-blue-50 text-blue-600 p-3 rounded-lg group-hover:bg-white/10 group-hover:text-white backdrop-blur-sm transition-colors">
-            <FileText size={24} />
+  const filteredInspectionHistory = inspectionHistory.filter(item => {
+    if (inspectionCategory === '全部') return true;
+    if (inspectionCategory === '资信标') return item.checkStatus[0] !== 0;
+    if (inspectionCategory === '技术标') return item.checkStatus[1] !== 0;
+    if (inspectionCategory === '经济标') return item.checkStatus[2] !== 0;
+    return true;
+  });
+
+  return (
+    <div className="space-y-8 min-h-[600px]">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-8">
+        <div className="bg-white border border-slate-200 rounded-xl p-8 hover:bg-primary hover:text-white hover:shadow-xl hover:shadow-primary/20 transition-all group cursor-pointer flex flex-col hover:-translate-y-1 duration-300">
+          <div className="p-3 rounded-lg w-fit mb-6 bg-emerald-50 text-emerald-600 group-hover:bg-white/10 group-hover:text-white transition-colors">
+            <Receipt size={24} />
           </div>
-          <div className="flex flex-col items-end gap-2 shrink-0 text-right">
-            <div className="text-[10px] font-bold text-slate-400 group-hover:text-blue-100 uppercase tracking-wider mb-0.5 translate-y-0.5">可用次数</div>
-            <div className="text-sm font-bold text-primary group-hover:text-white whitespace-nowrap">
-              {inspectionQuota.remaining} <span className="text-[10px] opacity-60 font-normal">/ {inspectionQuota.total}</span>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-xl font-bold">标书检查</h4>
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onToggleHistory();
-            }}
-            className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${showHistory ? 'bg-primary text-white shadow-sm' : 'text-primary hover:bg-primary/5 border border-primary/20 group-hover:border-white/30 group-hover:text-white group-hover:bg-white/10'}`}
-          >
-            {showHistory ? '收起历史' : '查看历史'}
-          </button>
-        </div>
-        <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-10 leading-relaxed min-h-[4.5rem] transition-colors">系统将自动扫描标书完整性、雷同性及格式规范，确保投标文件的有效性，降低废标风险。</p>
+          <h4 className="text-xl font-bold mb-3">保证金回执上传</h4>
+          <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-10 leading-relaxed min-h-[4.5rem] transition-colors">上传保证金缴纳回执，确保投标资格有效性。</p>
           <button 
             onClick={(e) => {
               e.stopPropagation();
@@ -5296,277 +5287,317 @@ const InspectionPhase = ({
                 alert('此项目已暂停');
                 return;
               }
-              setCurrentPhase('inspection');
+              onUploadMargin();
             }}
-            className={`mt-auto w-full py-3.5 bg-white border border-slate-200 text-slate-700 group-hover:border-transparent group-hover:text-primary font-bold rounded-lg hover:bg-blue-50 transition-all flex items-center justify-center gap-2 ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`mt-auto w-full py-3.5 bg-white border border-slate-200 text-slate-700 group-hover:border-transparent group-hover:text-primary font-bold rounded-lg hover:bg-blue-50 transition-all ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            开始检查
+            立即上传
           </button>
-      </div>
+        </div>
 
-
-      <div 
-        onClick={() => {
-          if (!isPaused) {
-            window.open('https://newbidui.graybruce.cn/', '_blank');
-          }
-        }}
-        className="bg-white border border-slate-200 rounded-xl p-8 hover:bg-primary hover:text-white hover:shadow-xl hover:shadow-primary/20 transition-all group cursor-pointer flex flex-col hover:-translate-y-1 duration-300"
-      >
-        <div className="flex justify-between items-start mb-6">
-          <div className="p-3 rounded-lg w-fit bg-indigo-50 text-indigo-600 group-hover:bg-white/10 group-hover:text-white transition-colors">
-            <Layers size={24} />
-          </div>
-          <div className="flex flex-col items-end gap-2 shrink-0 text-right">
-            <div className="text-[10px] font-bold text-slate-400 group-hover:text-blue-100 uppercase tracking-wider mb-0.5 translate-y-0.5">可用次数</div>
-            <div className="text-sm font-bold text-primary group-hover:text-white whitespace-nowrap">
-              {comparisonQuota.remaining} <span className="text-[10px] opacity-60 font-normal">/ {comparisonQuota.total}</span>
+        <div 
+          onMouseEnter={() => onSelect('bid-inspection')}
+          onMouseLeave={() => onSelect(null)}
+          onClick={() => {
+            if (!isPaused) {
+              setCurrentPhase('inspection');
+            }
+          }}
+          className="bg-white border border-slate-200 rounded-xl p-8 text-slate-900 hover:bg-primary hover:text-white hover:shadow-xl hover:shadow-primary/20 group hover:-translate-y-1 transition-all duration-300 cursor-pointer relative overflow-hidden flex flex-col"
+        >
+          <div className="flex justify-between items-start mb-6">
+            <div className="bg-blue-50 text-blue-600 p-3 rounded-lg group-hover:bg-white/10 group-hover:text-white backdrop-blur-sm transition-colors">
+              <FileText size={24} />
+            </div>
+            <div className="flex flex-col items-end gap-2 shrink-0 text-right">
+              <div className="text-[10px] font-bold text-slate-400 group-hover:text-blue-100 uppercase tracking-wider mb-0.5 translate-y-0.5">可用次数</div>
+              <div className="text-sm font-bold text-primary group-hover:text-white whitespace-nowrap">
+                {inspectionQuota.remaining} <span className="text-[10px] opacity-60 font-normal">/ {inspectionQuota.total}</span>
+              </div>
             </div>
           </div>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-xl font-bold">标书检查</h4>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleHistory();
+              }}
+              className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${showHistory ? 'bg-primary text-white shadow-sm' : 'text-primary hover:bg-primary/5 border border-primary/20 group-hover:border-white/30 group-hover:text-white group-hover:bg-white/10'}`}
+            >
+              {showHistory ? '收起历史' : '查看历史'}
+            </button>
+          </div>
+          <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-10 leading-relaxed min-h-[4.5rem] transition-colors">系统将自动扫描标书完整性、雷同性及格式规范，确保投标文件的有效性，降低废标风险。</p>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isPaused) {
+                  alert('此项目已暂停');
+                  return;
+                }
+                setCurrentPhase('inspection');
+              }}
+              className={`mt-auto w-full py-3.5 bg-white border border-slate-200 text-slate-700 group-hover:border-transparent group-hover:text-primary font-bold rounded-lg hover:bg-blue-50 transition-all flex items-center justify-center gap-2 ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              开始检查
+            </button>
         </div>
-        <div className="flex items-center justify-between mb-3">
-          <h4 className="text-xl font-bold">多版本比对</h4>
+
+
+        <div 
+          onClick={() => {
+            if (!isPaused) {
+              window.open('https://newbidui.graybruce.cn/', '_blank');
+            }
+          }}
+          className="bg-white border border-slate-200 rounded-xl p-8 hover:bg-primary hover:text-white hover:shadow-xl hover:shadow-primary/20 transition-all group cursor-pointer flex flex-col hover:-translate-y-1 duration-300"
+        >
+          <div className="flex justify-between items-start mb-6">
+            <div className="p-3 rounded-lg w-fit bg-indigo-50 text-indigo-600 group-hover:bg-white/10 group-hover:text-white transition-colors">
+              <Layers size={24} />
+            </div>
+            <div className="flex flex-col items-end gap-2 shrink-0 text-right">
+              <div className="text-[10px] font-bold text-slate-400 group-hover:text-blue-100 uppercase tracking-wider mb-0.5 translate-y-0.5">可用次数</div>
+              <div className="text-sm font-bold text-primary group-hover:text-white whitespace-nowrap">
+                {comparisonQuota.remaining} <span className="text-[10px] opacity-60 font-normal">/ {comparisonQuota.total}</span>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center justify-between mb-3">
+            <h4 className="text-xl font-bold">多版本比对</h4>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggleComparisonHistory();
+              }}
+              className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${showComparisonHistory ? 'bg-primary text-white shadow-sm' : 'text-primary hover:bg-primary/5 border border-primary/20 group-hover:border-white/30 group-hover:text-white group-hover:bg-white/10'}`}
+            >
+              {showComparisonHistory ? '收起历史' : '查看历史'}
+            </button>
+          </div>
+          <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-10 leading-relaxed min-h-[4.5rem] transition-colors">支持对不同版本的标书进行快速比对，自动识别差异内容，提高审核效率。</p>
           <button 
             onClick={(e) => {
               e.stopPropagation();
-              onToggleComparisonHistory();
+              if (isPaused) {
+                alert('此项目已暂停');
+                return;
+              }
+              window.open('https://newbidui.graybruce.cn/', '_blank');
             }}
-            className={`text-[10px] font-bold px-2 py-1 rounded transition-colors ${showComparisonHistory ? 'bg-primary text-white shadow-sm' : 'text-primary hover:bg-primary/5 border border-primary/20 group-hover:border-white/30 group-hover:text-white group-hover:bg-white/10'}`}
+            className={`mt-auto w-full py-3.5 bg-white border border-slate-200 text-slate-700 group-hover:border-transparent group-hover:text-primary font-bold rounded-lg hover:bg-blue-50 transition-all ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
-            {showComparisonHistory ? '收起历史' : '查看历史'}
+            开始比对
           </button>
         </div>
-        <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-10 leading-relaxed min-h-[4.5rem] transition-colors">支持对不同版本的标书进行快速比对，自动识别差异内容，提高审核效率。</p>
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            if (isPaused) {
-              alert('此项目已暂停');
-              return;
-            }
-            window.open('https://newbidui.graybruce.cn/', '_blank');
-          }}
-          className={`mt-auto w-full py-3.5 bg-white border border-slate-200 text-slate-700 group-hover:border-transparent group-hover:text-primary font-bold rounded-lg hover:bg-blue-50 transition-all ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          开始比对
-        </button>
+
+        <div className="bg-white border border-slate-200 rounded-xl p-8 hover:bg-primary hover:text-white hover:shadow-xl hover:shadow-primary/20 transition-all group cursor-pointer flex flex-col hover:-translate-y-1 duration-300">
+          <div className="p-3 rounded-lg w-fit mb-6 bg-slate-50 text-slate-600 group-hover:bg-white/10 group-hover:text-white transition-colors">
+            <Copy size={24} />
+          </div>
+          <h4 className="text-xl font-bold mb-3">标书查重</h4>
+          <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-10 leading-relaxed min-h-[4.5rem] transition-colors">对标书内容进行深度查重分析，自动识别重复段落，有效降低废标风险。</p>
+          <button 
+            onClick={() => {
+              if (isPaused) {
+                alert('此项目已暂停');
+                return;
+              }
+            }}
+            className={`mt-auto w-full py-3.5 bg-white border border-slate-200 text-slate-700 group-hover:border-transparent group-hover:text-primary font-bold rounded-lg hover:bg-blue-50 transition-all ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            开始检测
+          </button>
+        </div>
+        
+        <div className="bg-white border border-slate-200 rounded-xl p-8 hover:bg-primary hover:text-white hover:shadow-xl hover:shadow-primary/20 transition-all group cursor-pointer flex flex-col hover:-translate-y-1 duration-300">
+          <div className="p-3 rounded-lg w-fit mb-6 bg-slate-50 text-slate-600 group-hover:bg-white/10 group-hover:text-white transition-colors">
+            <Users size={24} />
+          </div>
+          <h4 className="text-xl font-bold mb-3">模拟开标</h4>
+          <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-10 leading-relaxed min-h-[4.5rem] transition-colors">模拟线上开标流程，提前熟悉系统操作，进行数字证书（CA）验证及加解密测试，确保正式开标顺利进行。</p>
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              if (isPaused) {
+                alert('此项目已暂停');
+                return;
+              }
+            }}
+            className={`mt-auto w-full py-3.5 bg-white border border-slate-200 text-slate-700 group-hover:border-transparent group-hover:text-primary font-bold rounded-lg hover:bg-blue-50 transition-all ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
+          >
+            进入模拟
+          </button>
+        </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-xl p-8 hover:bg-primary hover:text-white hover:shadow-xl hover:shadow-primary/20 transition-all group cursor-pointer flex flex-col hover:-translate-y-1 duration-300">
-        <div className="p-3 rounded-lg w-fit mb-6 bg-slate-50 text-slate-600 group-hover:bg-white/10 group-hover:text-white transition-colors">
-          <Copy size={24} />
-        </div>
-        <h4 className="text-xl font-bold mb-3">标书查重</h4>
-        <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-10 leading-relaxed min-h-[4.5rem] transition-colors">对标书内容进行深度查重分析，自动识别重复段落，有效降低废标风险。</p>
-        <button 
-          onClick={() => {
-            if (isPaused) {
-              alert('此项目已暂停');
-              return;
-            }
-          }}
-          className={`mt-auto w-full py-3.5 bg-white border border-slate-200 text-slate-700 group-hover:border-transparent group-hover:text-primary font-bold rounded-lg hover:bg-blue-50 transition-all ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          开始检测
-        </button>
-      </div>
-      
-      <div className="bg-white border border-slate-200 rounded-xl p-8 hover:bg-primary hover:text-white hover:shadow-xl hover:shadow-primary/20 transition-all group cursor-pointer flex flex-col hover:-translate-y-1 duration-300">
-        <div className="p-3 rounded-lg w-fit mb-6 bg-slate-50 text-slate-600 group-hover:bg-white/10 group-hover:text-white transition-colors">
-          <Users size={24} />
-        </div>
-        <h4 className="text-xl font-bold mb-3">模拟开标</h4>
-        <p className="text-slate-400 group-hover:text-blue-100 text-sm mb-10 leading-relaxed min-h-[4.5rem] transition-colors">模拟线上开标流程，提前熟悉系统操作，进行数字证书（CA）验证及加解密测试，确保正式开标顺利进行。</p>
-        <button 
-          onClick={(e) => {
-            e.stopPropagation();
-            if (isPaused) {
-              alert('此项目已暂停');
-              return;
-            }
-          }}
-          className={`mt-auto w-full py-3.5 bg-white border border-slate-200 text-slate-700 group-hover:border-transparent group-hover:text-primary font-bold rounded-lg hover:bg-blue-50 transition-all ${isPaused ? 'opacity-50 cursor-not-allowed' : ''}`}
-        >
-          进入模拟
-        </button>
-      </div>
-    </div>
-
-    <AnimatePresence>
-      {showHistory && (
-        <motion.div 
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-          className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
-        >
-          <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-blue-50 text-blue-500 shadow-sm border border-blue-100">
-                <History size={20} />
+      <AnimatePresence>
+        {showHistory && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
+          >
+            <div className="px-8 pt-8 pb-4 flex flex-col gap-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xl font-black text-slate-900 tracking-tight">标书检查历史记录</h3>
+                <button 
+                  onClick={onToggleHistory}
+                  className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
+                >
+                  <X size={24} />
+                </button>
               </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">标书检查历史记录</h3>
-                <p className="text-[10px] text-slate-400 font-medium">查看并追踪往期检查结果</p>
+              
+              <div className="flex items-center gap-2">
+                {(['全部', '资信标', '技术标', '经济标'] as const).map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setInspectionCategory(tab)}
+                    className={`px-6 py-2 rounded-xl text-sm font-black transition-all ${
+                      inspectionCategory === tab 
+                        ? 'bg-primary text-white shadow-lg shadow-primary/20 scale-105' 
+                        : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-700'
+                    }`}
+                  >
+                    {tab}
+                  </button>
+                ))}
               </div>
             </div>
-            <button 
-              onClick={onToggleHistory}
-              className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
-            >
-              <X size={20} />
-            </button>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-100">
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">检查名称</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">检查依据</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">状态</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">最后更新</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">操作</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {inspectionHistory.map((history) => (
-                  <tr key={history.id} className="hover:bg-slate-50/80 transition-colors group/row">
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-blue-50 text-blue-500 group-hover/row:scale-110 transition-transform duration-300 shadow-sm border border-blue-100 opacity-80">
-                          <FileSearch size={16} />
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="px-8 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">检查名称</th>
+                    <th className="px-8 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">检查依据</th>
+                    <th className="px-8 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-center">状态</th>
+                    <th className="px-8 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">最后更新</th>
+                    <th className="px-8 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-right">操作</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {filteredInspectionHistory.map((history) => (
+                    <tr key={history.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-3">
+                          <div className="p-2 rounded-lg bg-blue-50 text-blue-500 group-hover:scale-110 transition-transform duration-300">
+                            <FileSearch size={16} />
+                          </div>
+                          <div>
+                            <div className="text-sm font-bold text-slate-700">{history.name}</div>
+                            <div className="text-[10px] text-slate-400 font-medium">ID: {history.id}</div>
+                          </div>
                         </div>
-                        <div>
-                          <div className="text-sm font-bold text-slate-700">{history.name}</div>
-                          <div className="text-[10px] text-slate-400 font-medium">ID: {history.id} · 自动化检查</div>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-col gap-1">
-                        <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">检查内容</span>
+                      </td>
+                      <td className="px-8 py-5">
                         <div className="flex items-center gap-2 text-xs text-slate-600 font-medium truncate max-w-xs">
                           <FileText size={12} className="text-slate-400" />
                           {history.basis}
                         </div>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3">
-                        {['资信', '技术', '经济'].map((tag, idx) => {
-                          const s = history.checkStatus[idx];
-                          return (
-                            <div key={tag} className="flex flex-col items-center gap-1">
-                              <span className="text-[9px] text-slate-400 font-bold">{tag}</span>
-                              {s === 1 ? <CheckCircle2 size={14} className="text-green-500" /> :
-                               s === 2 ? <div className="text-blue-500 italic text-[10px] font-black">进行中</div> :
-                               s === 3 ? <AlertTriangle size={14} className="text-orange-500" /> :
-                               <div className="size-3.5 rounded-full border border-slate-200" />}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-slate-500 font-bold">{history.date}</td>
-                    <td className="px-6 py-4 text-right">
-                      <button 
-                        onClick={() => {
-                          if (isPaused) return;
-                          setCurrentPhase('inspection');
-                        }}
-                        disabled={isPaused}
-                        className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-xl font-bold text-xs shadow-sm transition-all ${
-                          history.status === '已完成' 
-                            ? 'bg-green-50 text-green-600 hover:bg-green-600 hover:text-white' 
-                            : 'bg-primary/10 text-primary hover:bg-primary hover:text-white'
-                        }`}
-                      >
-                        {history.status === '已完成' ? '查看结果' : '继续检查'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-
-    <AnimatePresence>
-      {showComparisonHistory && (
-        <motion.div 
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: 'auto' }}
-          exit={{ opacity: 0, height: 0 }}
-          className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
-        >
-          <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-indigo-50 text-indigo-500 shadow-sm border border-indigo-100">
-                <History size={20} />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold text-slate-900">多版本比对历史记录</h3>
-                <p className="text-[10px] text-slate-400 font-medium">查看并追踪往期比对结果</p>
-              </div>
+                      </td>
+                      <td className="px-8 py-5">
+                        <div className="flex items-center justify-center gap-4">
+                          {['资信', '技术', '经济'].map((tag, idx) => {
+                            const s = history.checkStatus[idx];
+                            return (
+                              <div key={tag} className="flex flex-col items-center gap-1">
+                                <span className="text-[8px] text-slate-400 font-bold uppercase">{tag}</span>
+                                {s === 1 ? <CheckCircle2 size={16} className="text-green-500" /> :
+                                 s === 2 ? <div className="text-blue-500 italic text-[10px] font-black">ING</div> :
+                                 s === 3 ? <AlertTriangle size={16} className="text-orange-500" /> :
+                                 <div className="size-4 rounded-full border-2 border-slate-200" />}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </td>
+                      <td className="px-8 py-5 text-sm text-slate-500 font-bold">{history.date}</td>
+                      <td className="px-8 py-5 text-right">
+                        <button 
+                          onClick={() => !isPaused && setCurrentPhase('inspection')}
+                          disabled={isPaused}
+                          className={`px-6 py-2.5 rounded-xl font-bold text-xs transition-all ${
+                            history.status === '已完成' 
+                              ? 'bg-green-50 text-green-600 hover:bg-green-600 hover:text-white' 
+                              : 'bg-primary/10 text-primary hover:bg-primary hover:text-white'
+                          }`}
+                        >
+                          {history.status === '已完成' ? '查看结果' : '继续'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
-            <button 
-              onClick={onToggleComparisonHistory}
-              className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
-            >
-              <X size={20} />
-            </button>
-          </div>
-          
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/80 border-b border-slate-100">
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">项目名称</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">项目编号</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">检查时间</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">文件数</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">风险评估</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">状态</th>
-                  <th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">操作</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {comparisonHistory.map((history) => (
-                  <tr key={history.id} className="hover:bg-slate-50/80 transition-colors group/row">
-                    <td className="px-6 py-4">
-                      <div className="text-sm font-bold text-slate-700">{history.name}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-xs text-slate-400 font-medium">{history.projectCode}</div>
-                    </td>
-                    <td className="px-6 py-4 text-xs text-slate-500 font-bold">{history.date}</td>
-                    <td className="px-6 py-4 text-xs text-slate-500 font-bold">{history.fileCount} 份</td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center justify-center size-8 rounded border border-slate-200 text-slate-400 text-sm">
-                        {history.riskScore}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="px-2 py-1 bg-red-50 text-red-500 text-[10px] font-bold rounded border border-red-100">
-                        {history.detailStatus}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      {/* Actions if any */}
-                    </td>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showComparisonHistory && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden"
+          >
+            <div className="px-8 pt-8 pb-6 flex items-center justify-between">
+              <h3 className="text-xl font-black text-slate-900 tracking-tight">多版本比对历史记录</h3>
+              <button 
+                onClick={onToggleComparisonHistory}
+                className="p-2 hover:bg-slate-100 rounded-full transition-colors text-slate-400"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-100">
+                    <th className="px-8 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">项目名称</th>
+                    <th className="px-8 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">项目编号</th>
+                    <th className="px-8 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">比对时间</th>
+                    <th className="px-8 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">文件数</th>
+                    <th className="px-8 py-4 text-xs font-black text-slate-400 uppercase tracking-widest">状态</th>
+                    <th className="px-8 py-4 text-xs font-black text-slate-400 uppercase tracking-widest text-right">操作</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  </div>
-);
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {comparisonHistory.map((history) => (
+                    <tr key={history.id} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="px-8 py-5">
+                        <div className="text-sm font-bold text-slate-700">{history.name}</div>
+                      </td>
+                      <td className="px-8 py-5">
+                        <div className="text-xs text-slate-400 font-bold">{history.projectCode}</div>
+                      </td>
+                      <td className="px-8 py-5 text-sm text-slate-500 font-medium">{history.date}</td>
+                      <td className="px-8 py-5 text-sm text-slate-500 font-bold">{history.fileCount} 份文件</td>
+                      <td className="px-8 py-5">
+                        <span className="px-3 py-1.5 bg-red-50 text-red-500 text-[10px] font-black rounded-lg border border-red-100">
+                          {history.detailStatus}
+                        </span>
+                      </td>
+                      <td className="px-8 py-5 text-right">
+                        <button className="text-xs font-black text-indigo-600 hover:text-indigo-700 transition-colors px-4 py-2 hover:bg-indigo-50 rounded-lg">查看详细报告</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 const ArchivingPhase = ({ onOpenArchiving, onOpenAttachments, isPaused }: { onOpenArchiving: () => void, onOpenAttachments: () => void, isPaused: boolean }) => (
   <div className="space-y-8 min-h-[600px]">
@@ -6744,30 +6775,14 @@ const ArchivingManagement = React.forwardRef(({
   );
 });
 
-interface Reply { id: string; author: string; content: string; time: string; }
-interface Annotation { id: string; author: string; role: string; time: string; content: string; replies: Reply[]; location: string; }
+interface Remark { id: string; author: string; role: string; time: string; content: string; }
 
-const AnnotationView = ({ onBack, isPaused }: { onBack: () => void, isPaused: boolean }) => {
-  const [annotations, setAnnotations] = useState<Annotation[]>([
-    { id: '1', author: '张工', role: '技术专家', time: '10:30', content: '此技术参数需进一步核实，GB/T 标准可能有更新版本，需确认是否适用最新标准。', replies: [], location: 'marker-1' },
-    { id: '2', author: '李经理', role: '商务总监', time: '昨天', content: '30天的交付周期对于目前的供应链情况来说极具挑战，建议在答疑环节申请延长至45天。', replies: [], location: 'marker-2' },
+const RemarksView = ({ onBack, isPaused }: { onBack: () => void, isPaused: boolean }) => {
+  const [remarks, setRemarks] = useState<Remark[]>([
+    { id: '1', author: '张工', role: '技术专家', time: '10:30', content: '此技术参数需进一步核实，GB/T 标准可能有更新版本，需确认是否适用最新标准。' },
+    { id: '2', author: '李经理', role: '商务总监', time: '昨天', content: '30天的交付周期对于目前的供应链情况来说极具挑战，建议在答疑环节申请延长至45天。' },
   ]);
-  const [replyText, setReplyText] = useState<Record<string, string>>({});
-  const [newAnnotation, setNewAnnotation] = useState('');
-
-  const handleAddReply = (annotationId: string) => {
-    if (!replyText[annotationId]?.trim()) return;
-    setAnnotations(prev => prev.map(ann => ann.id === annotationId ? {
-      ...ann,
-      replies: [...ann.replies, { id: Date.now().toString(), author: '我', content: replyText[annotationId], time: '刚刚' }]
-    } : ann));
-    setReplyText(prev => ({ ...prev, [annotationId]: '' }));
-  };
-
-  const scrollToMarker = (location: string) => {
-    const element = document.getElementById(location);
-    if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  };
+  const [newRemark, setNewRemark] = useState('');
 
   return (
     <div className={`h-[calc(100vh-200px)] flex flex-col bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm ${isPaused ? 'opacity-75' : ''}`}>
@@ -6777,13 +6792,13 @@ const AnnotationView = ({ onBack, isPaused }: { onBack: () => void, isPaused: bo
             <ChevronLeft size={20} />
           </button>
           <h3 className="font-bold text-slate-900 flex items-center gap-2">
-            <PenTool size={18} className="text-primary" />
-            在线批注模式
+            <MessageSquare size={18} className="text-primary" />
+            备注模式
           </h3>
         </div>
         <div className="flex items-center gap-2">
           <button className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all flex items-center gap-2">
-            <Download size={14} /> 导出批注
+            <Download size={14} /> 导出备注
           </button>
           <button className="px-3 py-1.5 bg-[#0052CC] text-white rounded-xl text-xs font-bold hover:bg-[#0052CC]/90 transition-all active:scale-95 flex items-center gap-2 shadow-lg shadow-blue-500/20">
             <Share2 size={14} /> 协作分享
@@ -6804,39 +6819,21 @@ const AnnotationView = ({ onBack, isPaused }: { onBack: () => void, isPaused: bo
 
               <section className="relative">
                 <h3 className="text-2xl font-bold mb-6 text-slate-900 border-b-2 border-slate-100 pb-3">第二章 投标人须知</h3>
-                <div className="relative group" id="marker-1">
+                <div className="relative group">
                   <p className="bg-blue-50 border-l-4 border-blue-500 pl-6 py-4 rounded-r-lg shadow-sm">
                     <span className="font-bold text-blue-700 block mb-1">2.1 技术参数要求：</span>
                     本项目涉及的所有智慧交通感应设备必须符合国家 GB/T 12345-2023 标准。
                   </p>
-                  <div 
-                    onClick={() => {
-                      const el = document.getElementById('annotation-1');
-                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }}
-                    className="absolute -right-3 top-1/2 -translate-y-1/2 size-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-xs font-black shadow-xl border-4 border-white cursor-pointer hover:scale-125 transition-all animate-pulse"
-                  >
-                    1
-                  </div>
                 </div>
               </section>
 
               <section className="relative">
                 <h3 className="text-2xl font-bold mb-6 text-slate-900 border-b-2 border-slate-100 pb-3">第三章 商务条款</h3>
-                <div className="relative group" id="marker-2">
+                <div className="relative group">
                   <p className="bg-orange-50 border-l-4 border-orange-500 pl-6 py-4 rounded-r-lg shadow-sm">
                     <span className="font-bold text-orange-700 block mb-1">3.1 交付周期：</span>
                     中标人须在合同签订后 30 个日历天内完成所有设备的交付与安装调试。
                   </p>
-                  <div 
-                    onClick={() => {
-                      const el = document.getElementById('annotation-2');
-                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    }}
-                    className="absolute -right-3 top-1/2 -translate-y-1/2 size-8 bg-orange-500 text-white rounded-full flex items-center justify-center text-xs font-black shadow-xl border-4 border-white cursor-pointer hover:scale-125 transition-all animate-pulse"
-                  >
-                    2
-                  </div>
                 </div>
               </section>
             </div>
@@ -6847,70 +6844,65 @@ const AnnotationView = ({ onBack, isPaused }: { onBack: () => void, isPaused: bo
           <div className="p-6 border-b border-slate-100 bg-slate-50/50">
             <h4 className="font-black text-slate-900 flex items-center justify-between">
               <span className="flex items-center gap-2 text-sm">
-                <PenTool size={16} className="text-primary" />
-                批注列表
+                <MessageSquare size={16} className="text-primary" />
+                备注列表
               </span>
-              <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] rounded-full">{annotations.length} 条记录</span>
+              <span className="px-2 py-0.5 bg-primary/10 text-primary text-[10px] rounded-full">{remarks.length} 条记录</span>
             </h4>
           </div>
           <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            {annotations.map(ann => (
+            {remarks.map(note => (
               <div 
-                key={ann.id} 
-                id={`annotation-${ann.id}`}
-                className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm hover:shadow-md transition-all cursor-pointer hover:border-primary/30" 
-                onClick={() => scrollToMarker(ann.location)}
+                key={note.id} 
+                className="bg-white rounded-xl p-4 border border-slate-100 shadow-sm hover:shadow-md transition-all group relative hover:border-primary/30" 
               >
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-2">
-                    <div className="size-6 bg-slate-900 text-white rounded-lg flex items-center justify-center text-[10px] font-black">{ann.author[0]}</div>
-                    <span className="text-[10px] font-black text-slate-900">{ann.author}</span>
+                    <div className="size-6 bg-slate-900 text-white rounded-lg flex items-center justify-center text-[10px] font-black">{note.author[0]}</div>
+                    <span className="text-[10px] font-black text-slate-900">{note.author}</span>
                   </div>
-                  <span className="text-[10px] text-slate-400">{ann.time}</span>
+                  <span className="text-[10px] text-slate-400">{note.time}</span>
                 </div>
-                <p className="text-xs text-slate-600 leading-relaxed font-medium mb-3">{ann.content}</p>
-                {ann.replies.map(reply => (
-                  <div key={reply.id} className="ml-4 mt-2 pl-3 border-l-2 border-slate-200 text-[10px] text-slate-500">
-                    <p className="font-bold text-slate-700">{reply.author}: {reply.content}</p>
-                  </div>
-                ))}
-                <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
-                  <input 
-                    type="text" 
-                    placeholder="回复..." 
-                    className="flex-1 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-[10px] outline-none focus:ring-1 focus:ring-primary/20"
-                    value={replyText[ann.id] || ''}
-                    onChange={(e) => setReplyText(prev => ({ ...prev, [ann.id]: e.target.value }))}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleAddReply(ann.id);
+                <p className="text-xs text-slate-600 leading-relaxed font-medium">{note.content}</p>
+                
+                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button 
+                    onClick={() => {
+                      if (isPaused) {
+                        alert('此项目已暂停');
+                        return;
                       }
+                      setRemarks(prev => prev.filter(r => r.id !== note.id));
                     }}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                  <button onClick={(e) => { e.stopPropagation(); handleAddReply(ann.id); }} className="px-2 py-1 bg-primary text-white rounded text-[10px] font-bold">回复</button>
-                  <button onClick={(e) => { e.stopPropagation(); setAnnotations(prev => prev.filter(a => a.id !== ann.id)); }} className="px-2 py-1 bg-rose-50 text-rose-600 rounded text-[10px] font-bold hover:bg-rose-100">删除</button>
+                    className="size-5 bg-red-50 text-red-500 rounded-full flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors border border-red-100"
+                  >
+                    <Trash2 size={10} />
+                  </button>
                 </div>
               </div>
             ))}
-            <div className="pt-4 border-t border-slate-100">
-              <input 
-                type="text" 
-                placeholder="添加新批注..." 
-                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-primary/20"
-                value={newAnnotation}
-                onChange={(e) => setNewAnnotation(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && newAnnotation.trim()) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    setAnnotations(prev => [...prev, { id: Date.now().toString(), author: '我', role: '用户', time: '刚刚', content: newAnnotation, replies: [], location: 'marker-1' }]);
-                    setNewAnnotation('');
-                  }
-                }}
+            
+            <div className="pt-4 border-t border-slate-100 space-y-4">
+              <textarea 
+                placeholder="添加新备注..." 
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-primary/20 resize-none h-24"
+                value={newRemark}
+                onChange={(e) => setNewRemark(e.target.value)}
               />
+              <button 
+                onClick={() => {
+                  if (isPaused) {
+                    alert('此项目已暂停');
+                    return;
+                  }
+                  if (!newRemark.trim()) return;
+                  setRemarks(prev => [{ id: Date.now().toString(), author: '我', role: '项目经理', time: new Date().toLocaleTimeString().slice(0, 5), content: newRemark }, ...prev]);
+                  setNewRemark('');
+                }}
+                className="w-full py-2 bg-primary text-white rounded-lg text-xs font-bold hover:bg-primary/90 transition-all flex items-center justify-center gap-2"
+              >
+                <Plus size={14} /> 添加备注
+              </button>
             </div>
           </div>
         </div>
@@ -7107,12 +7099,12 @@ const RiskView = ({ onBack, isPaused }: { onBack: () => void, isPaused: boolean 
             <p className="text-slate-600 leading-relaxed">{risk.content}</p>
             <div className="mt-6 pt-6 border-t border-slate-200/50">
               <div className="flex items-center gap-2 mb-3">
-                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">批注</span>
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">备注</span>
               </div>
               <div className="flex gap-2">
                 <input 
                   type="text" 
-                  placeholder="添加批注..." 
+                  placeholder="添加备注..." 
                   className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs outline-none focus:ring-2 focus:ring-primary/20"
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {

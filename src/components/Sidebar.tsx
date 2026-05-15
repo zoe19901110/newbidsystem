@@ -112,11 +112,25 @@ const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, currentEnter
       className="w-96 bg-slate-50/50 border-r border-slate-200 flex flex-col shrink-0 h-screen sticky top-0"
     >
       <div className="p-6 flex items-center gap-3">
-        <div className="size-9 bg-primary rounded-xl flex items-center justify-center text-white shadow-lg shadow-primary/20">
-          <Archive size={22} />
+        <div className="size-10 bg-white rounded-xl flex items-center justify-center shadow-lg border border-slate-100 p-1 shrink-0">
+          <svg viewBox="0 0 100 100" className="w-full h-full">
+            <defs>
+              <linearGradient id="sidebar-arch-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stopColor="#BA0F30" />
+                <stop offset="40%" stopColor="#003B8E" />
+                <stop offset="100%" stopColor="#0090C5" />
+              </linearGradient>
+            </defs>
+            <path 
+              d="M10 60 Q 50 10 90 60 L 82 60 Q 50 25 18 60 Z" 
+              fill="url(#sidebar-arch-grad)" 
+            />
+            <text x="50" y="82" textAnchor="middle" fill="#003B8E" className="text-[24px] font-bold" style={{ fontSize: '24px' }}>标桥</text>
+          </svg>
         </div>
         <div>
-          <h1 className="text-xl font-bold leading-none tracking-tight text-slate-800">投标管理系统</h1>
+          <h1 className="text-xl font-black leading-none tracking-tight text-slate-800">标桥 BQPOINT</h1>
+          <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase tracking-widest">Tender Management</p>
         </div>
       </div>
 

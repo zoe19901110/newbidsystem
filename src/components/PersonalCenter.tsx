@@ -21,7 +21,14 @@ import {
   History,
   ArrowRightLeft,
   AlertTriangle,
-  Search
+  Search,
+  Check,
+  Filter,
+  CreditCard,
+  Building,
+  Info,
+  ChevronRight,
+  Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -66,6 +73,68 @@ const PersonalCenter: React.FC<PersonalCenterProps> = ({ currentEnterprise, init
   const [isSearchingManagedUser, setIsSearchingManagedUser] = useState(false);
   const [managedSearchResults, setManagedSearchResults] = useState<any[]>([]);
   const [managedUser, setManagedUser] = useState<any>(null);
+
+  // Orders and Invoices states
+  const [selectedOrders, setSelectedOrders] = useState<string[]>([]);
+  const [isInvoiceModalOpen, setIsInvoiceModalOpen] = useState(false);
+  const [invoiceType, setInvoiceType] = useState<'普票' | '专票'>('普票');
+  const [invoiceForm, setInvoiceForm] = useState({
+    companyName: '南京某某建设工程有限公司',
+    taxId: '91320100XXXXXXXXXX',
+    address: '南京市玄武区某某路XX号',
+    phone: '025-88888888',
+    bankName: '中国工商银行南京分行',
+    bankAccount: '622202XXXXXXXXXXXXXXXX',
+    email: profile.email
+  });
+
+  const [orders, setOrders] = useState([
+    { id: 'ORD-2024031201', name: '标书检查服务 - 高级版', amount: 299.00, date: '2024-03-12 10:30', status: '已支付', isInvoiced: false },
+    { id: 'ORD-2024031002', name: '多版本比对包 - 50次', amount: 599.00, date: '2024-03-10 15:45', status: '已支付', isInvoiced: true },
+    { id: 'ORD-2024030803', name: '标书查重年度订阅', amount: 1999.00, date: '2024-03-08 09:12', status: '已支付', isInvoiced: false },
+    { id: 'ORD-2024030504', name: '模拟开标专业指导', amount: 450.00, date: '2024-03-05 14:20', status: '已支付', isInvoiced: false },
+  ]);
+
+  const [invoices, setInvoices] = useState([
+    { id: 'INV-2024031101', orderIds: ['ORD-2024031002'], type: '普票', amount: 599.00, date: '2024-03-11 11:00', status: '开票成功', company: '南京某某建设工程有限公司' },
+  ]);
+
+  const toggleOrderSelection = (id: string) => {
+    setSelectedOrders(prev => 
+      prev.includes(id) ? prev.filter(oid => oid !== id) : [...prev, id]
+    );
+  };
+
+  const handleApplyInvoice = () => {
+    if (selectedOrders.length === 0) {
+      alert('请选择至少一个订单');
+      return;
+    }
+    setIsInvoiceModalOpen(true);
+  };
+
+  const handleConfirmInvoice = () => {
+    const amount = orders
+      .filter(o => selectedOrders.includes(o.id))
+      .reduce((sum, o) => sum + o.amount, 0);
+
+    const newInvoice = {
+      id: `INV-${new Date().getTime()}`,
+      orderIds: [...selectedOrders],
+      type: invoiceType,
+      amount,
+      date: new Date().toLocaleString(),
+      status: '开票中',
+      company: invoiceForm.companyName
+    };
+
+    setInvoices([newInvoice, ...invoices]);
+    setOrders(orders.map(o => selectedOrders.includes(o.id) ? { ...o, isInvoiced: true } : o));
+    setSelectedOrders([]);
+    setIsInvoiceModalOpen(false);
+    setSuccessMsg('发票申请已提交，请在“我的发票”中查看进度');
+    setTimeout(() => setSuccessMsg(false), 3000);
+  };
 
   // Log states
   const [logSearch, setLogSearch] = useState('');
@@ -142,7 +211,7 @@ const PersonalCenter: React.FC<PersonalCenterProps> = ({ currentEnterprise, init
   };
 
   const handleTransfer = () => {
-    if (!selectedTransferUser) return;
+    if (!selectedTargetUser) return;
     setIsConfirmTransferOpen(true);
   };
 
@@ -644,20 +713,176 @@ const PersonalCenter: React.FC<PersonalCenterProps> = ({ currentEnterprise, init
   );
 
   const renderOrders = () => (
-    <div className="flex flex-col items-center justify-center h-64 text-slate-400 space-y-4">
-      <div className="size-16 bg-slate-50 rounded-full flex items-center justify-center">
-        <ShoppingBag size={32} />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold text-slate-900">我的订单</h3>
+          <p className="text-xs text-slate-500 font-medium mt-1">查看往期购买的服务及订单状态，可勾选未开票订单申请发票</p>
+        </div>
+        <button 
+          onClick={handleApplyInvoice}
+          disabled={selectedOrders.length === 0}
+          className={`flex items-center gap-2 px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${
+            selectedOrders.length > 0 
+              ? 'bg-primary text-white shadow-lg shadow-primary/20 hover:scale-105' 
+              : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+          }`}
+        >
+          <FileText size={18} />
+          申请开票 ({selectedOrders.length})
+        </button>
       </div>
-      <p className="font-medium">我的订单正在开发中...</p>
+
+      <div className="overflow-hidden border border-slate-100 rounded-3xl bg-white shadow-sm">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-slate-50/80 border-b border-slate-100">
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center w-12">
+                <button 
+                  onClick={() => {
+                    const nonInvoiced = orders.filter(o => !o.isInvoiced).map(o => o.id);
+                    if (selectedOrders.length === nonInvoiced.length) {
+                      setSelectedOrders([]);
+                    } else {
+                      setSelectedOrders(nonInvoiced);
+                    }
+                  }}
+                  className="size-5 rounded border border-slate-300 flex items-center justify-center hover:border-primary transition-colors mx-auto"
+                >
+                  {selectedOrders.length > 0 && (
+                    <div className={`size-3 rounded-sm ${selectedOrders.length === orders.filter(o => !o.isInvoiced).length ? 'bg-primary' : 'bg-primary/40'}`} />
+                  )}
+                </button>
+              </th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">订单内容</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">单号</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">金额</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">支付时间</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">状态</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">开票状态</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50 font-medium">
+            {orders.map((order) => (
+              <tr key={order.id} className="hover:bg-slate-50/30 transition-colors">
+                <td className="px-6 py-5 text-center">
+                  <button 
+                    disabled={order.isInvoiced}
+                    onClick={() => toggleOrderSelection(order.id)}
+                    className={`size-5 rounded border flex items-center justify-center transition-all mx-auto ${
+                      order.isInvoiced 
+                        ? 'bg-slate-50 border-slate-200 cursor-not-allowed opacity-40' 
+                        : selectedOrders.includes(order.id) 
+                          ? 'bg-primary border-primary text-white shadow-sm' 
+                          : 'border-slate-300 hover:border-primary'
+                    }`}
+                  >
+                    {selectedOrders.includes(order.id) && <Check size={12} strokeWidth={4} />}
+                  </button>
+                </td>
+                <td className="px-6 py-5">
+                  <div className="text-sm font-bold text-slate-700">{order.name}</div>
+                </td>
+                <td className="px-6 py-5">
+                  <div className="text-xs font-mono text-slate-400">{order.id}</div>
+                </td>
+                <td className="px-6 py-5">
+                  <div className="text-sm font-black text-slate-900">￥{order.amount.toFixed(2)}</div>
+                </td>
+                <td className="px-6 py-5">
+                  <div className="text-xs text-slate-500">{order.date}</div>
+                </td>
+                <td className="px-6 py-5 text-center">
+                  <span className="px-3 py-1 bg-green-50 text-green-600 text-[10px] font-bold rounded-lg border border-green-100">
+                    {order.status}
+                  </span>
+                </td>
+                <td className="px-6 py-5 text-right">
+                  {order.isInvoiced ? (
+                    <span className="text-xs text-slate-400 flex items-center justify-end gap-1 font-bold">
+                      <CheckCircle2 size={14} className="text-emerald-500" />
+                      已开票
+                    </span>
+                  ) : (
+                    <span className="text-xs text-primary font-bold">未开票</span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 
   const renderInvoices = () => (
-    <div className="flex flex-col items-center justify-center h-64 text-slate-400 space-y-4">
-      <div className="size-16 bg-slate-50 rounded-full flex items-center justify-center">
-        <FileText size={32} />
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-lg font-bold text-slate-900">我的发票</h3>
+          <p className="text-xs text-slate-500 font-medium mt-1">管理并下载已开具的发票，通常在开票成功后1-3个工作日内送达</p>
+        </div>
       </div>
-      <p className="font-medium">我的发票正在开发中...</p>
+
+      <div className="overflow-hidden border border-slate-100 rounded-3xl bg-white shadow-sm">
+        <table className="w-full text-left">
+          <thead>
+            <tr className="bg-slate-50/80 border-b border-slate-100">
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center w-16">编号</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">抬头信息</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">发票类型</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">开票金额</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest">申请时间</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">状态</th>
+              <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">操作</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-50 font-medium">
+            {invoices.length > 0 ? invoices.map((invoice, idx) => (
+              <tr key={invoice.id} className="hover:bg-slate-50/30 transition-colors">
+                <td className="px-6 py-5 text-center text-xs font-mono text-slate-400">{idx + 1}</td>
+                <td className="px-6 py-5">
+                  <div className="text-sm font-bold text-slate-700">{invoice.company}</div>
+                  <div className="text-[10px] text-slate-400 mt-1">关联订单: {invoice.orderIds.length}份</div>
+                </td>
+                <td className="px-6 py-5 text-center">
+                  <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md border ${
+                    invoice.type === '专票' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' : 'bg-slate-50 text-slate-600 border-slate-200'
+                  }`}>
+                    {invoice.type === '增值税' + invoice.type}
+                  </span>
+                </td>
+                <td className="px-6 py-5">
+                  <div className="text-sm font-black text-slate-900">￥{invoice.amount.toFixed(2)}</div>
+                </td>
+                <td className="px-6 py-5">
+                  <div className="text-xs text-slate-500 font-medium">{invoice.date}</div>
+                </td>
+                <td className="px-6 py-5 text-center">
+                  <span className={`px-3 py-1 text-[10px] font-bold rounded-lg border ${
+                    invoice.status === '开票成功' ? 'bg-green-50 text-green-600 border-green-100' : 'bg-blue-50 text-blue-600 border-blue-100'
+                  }`}>
+                    {invoice.status}
+                  </span>
+                </td>
+                <td className="px-6 py-5 text-right">
+                  <button className="flex items-center gap-1.5 ml-auto text-xs font-bold text-primary hover:text-blue-700 transition-colors">
+                    <Download size={14} />
+                    下载
+                  </button>
+                </td>
+              </tr>
+            )) : (
+              <tr>
+                <td colSpan={7} className="px-6 py-20 text-center text-slate-400">
+                  <FileText className="mx-auto mb-4 opacity-20" size={48} />
+                  <p className="text-sm font-medium">暂无发票记录</p>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 
@@ -946,6 +1171,204 @@ const PersonalCenter: React.FC<PersonalCenterProps> = ({ currentEnterprise, init
                 >
                   确认转移
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isInvoiceModalOpen && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+              onClick={() => setIsInvoiceModalOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 30 }}
+              className="relative w-full max-w-2xl bg-white rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="px-10 pt-10 pb-6 flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight">申请开具发票</h3>
+                  <p className="text-xs text-slate-500 font-bold mt-1 uppercase tracking-widest">INVOICE APPLICATION</p>
+                </div>
+                <button 
+                  onClick={() => setIsInvoiceModalOpen(false)}
+                  className="size-10 flex items-center justify-center hover:bg-slate-100 rounded-2xl transition-colors text-slate-400"
+                >
+                  &#x2715;
+                </button>
+              </div>
+
+              <div className="px-10 pb-10 overflow-y-auto space-y-8 flex-1">
+                {/* Invoice Type Selection */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <div className="size-2 rounded-full bg-primary" />
+                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest">选择发票类型</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button 
+                      onClick={() => setInvoiceType('普票')}
+                      className={`p-6 rounded-3xl border-2 transition-all text-left relative group ${
+                        invoiceType === '普票' 
+                          ? 'border-primary bg-primary/5 ring-4 ring-primary/5' 
+                          : 'border-slate-100 hover:border-slate-200'
+                      }`}
+                    >
+                      <div className={`size-6 rounded-full border-2 flex items-center justify-center mb-4 transition-colors ${
+                        invoiceType === '普票' ? 'border-primary bg-primary' : 'border-slate-300'
+                      }`}>
+                        {invoiceType === '普票' && <Check size={14} className="text-white" strokeWidth={4} />}
+                      </div>
+                      <h4 className={`text-lg font-black ${invoiceType === '普票' ? 'text-primary' : 'text-slate-700'}`}>普票 (电子)</h4>
+                      <p className="text-xs text-slate-400 mt-1 font-medium italic">适用于个人或一般企业报销</p>
+                    </button>
+                    <button 
+                      onClick={() => setInvoiceType('专票')}
+                      className={`p-6 rounded-3xl border-2 transition-all text-left relative group ${
+                        invoiceType === '专票' 
+                          ? 'border-indigo-500 bg-indigo-50/30 ring-4 ring-indigo-500/5' 
+                          : 'border-slate-100 hover:border-slate-200'
+                      }`}
+                    >
+                      <div className={`size-6 rounded-full border-2 flex items-center justify-center mb-4 transition-colors ${
+                        invoiceType === '专票' ? 'border-indigo-500 bg-indigo-500' : 'border-slate-300'
+                      }`}>
+                        {invoiceType === '专票' && <Check size={14} className="text-white" strokeWidth={4} />}
+                      </div>
+                      <h4 className={`text-lg font-black ${invoiceType === '专票' ? 'text-indigo-600' : 'text-slate-700'}`}>专票 (电子/纸质)</h4>
+                      <p className="text-xs text-slate-400 mt-1 font-medium italic">适用于一般纳税人抵扣税款</p>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Company Info Form */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <div className="size-2 rounded-full bg-indigo-500" />
+                    <span className="text-xs font-black text-slate-400 uppercase tracking-widest">填写企业信息</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-5">
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 ml-1 uppercase tracking-widest">单位名称</label>
+                      <div className="relative">
+                        <Building className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input 
+                          type="text"
+                          value={invoiceForm.companyName}
+                          onChange={(e) => setInvoiceForm({...invoiceForm, companyName: e.target.value})}
+                          placeholder="请输入单位全称"
+                          className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:ring-4 focus:ring-primary/5 focus:border-primary outline-none transition-all placeholder:text-slate-300"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-slate-400 ml-1 uppercase tracking-widest">纳税人识别号</label>
+                      <div className="relative">
+                        <Info className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input 
+                          type="text"
+                          value={invoiceForm.taxId}
+                          onChange={(e) => setInvoiceForm({...invoiceForm, taxId: e.target.value})}
+                          placeholder="请输入纳税人识别号"
+                          className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:ring-4 focus:ring-primary/5 focus:border-primary outline-none transition-all placeholder:text-slate-300"
+                        />
+                      </div>
+                    </div>
+
+                    {invoiceType === '专票' && (
+                      <>
+                        <div className="space-y-1.5 col-span-2">
+                          <label className="text-[10px] font-black text-slate-400 ml-1 uppercase tracking-widest">注册地址及电话</label>
+                          <div className="grid grid-cols-2 gap-4">
+                            <input 
+                              type="text"
+                              value={invoiceForm.address}
+                              onChange={(e) => setInvoiceForm({...invoiceForm, address: e.target.value})}
+                              placeholder="注册地址"
+                              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:ring-4 focus:ring-primary/5 focus:border-primary outline-none transition-all placeholder:text-slate-300"
+                            />
+                            <input 
+                              type="text"
+                              value={invoiceForm.phone}
+                              onChange={(e) => setInvoiceForm({...invoiceForm, phone: e.target.value})}
+                              placeholder="注册电话"
+                              className="w-full px-5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:ring-4 focus:ring-primary/5 focus:border-primary outline-none transition-all placeholder:text-slate-300"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-400 ml-1 uppercase tracking-widest">开户银行名称</label>
+                          <div className="relative">
+                            <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input 
+                              type="text"
+                              value={invoiceForm.bankName}
+                              onChange={(e) => setInvoiceForm({...invoiceForm, bankName: e.target.value})}
+                              placeholder="请输入开户行名称"
+                              className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:ring-4 focus:ring-primary/5 focus:border-primary outline-none transition-all placeholder:text-slate-300"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-slate-400 ml-1 uppercase tracking-widest">银行账号</label>
+                          <div className="relative">
+                            <CreditCard className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                            <input 
+                              type="text"
+                              value={invoiceForm.bankAccount}
+                              onChange={(e) => setInvoiceForm({...invoiceForm, bankAccount: e.target.value})}
+                              placeholder="请输入银行账号"
+                              className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:ring-4 focus:ring-primary/5 focus:border-primary outline-none transition-all placeholder:text-slate-300"
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
+
+                    <div className="space-y-1.5 col-span-2">
+                      <label className="text-[10px] font-black text-slate-400 ml-1 uppercase tracking-widest">收票邮箱</label>
+                      <div className="relative">
+                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+                        <input 
+                          type="email"
+                          value={invoiceForm.email}
+                          onChange={(e) => setInvoiceForm({...invoiceForm, email: e.target.value})}
+                          placeholder="发票将发送至您的电子邮箱"
+                          className="w-full pl-12 pr-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-sm font-bold text-slate-700 focus:bg-white focus:ring-4 focus:ring-primary/5 focus:border-primary outline-none transition-all placeholder:text-slate-300"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Summary */}
+                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="size-12 bg-white rounded-2xl shadow-sm flex items-center justify-center text-primary">
+                      <ShoppingBag size={24} />
+                    </div>
+                    <div>
+                      <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">共选取 {selectedOrders.length} 个订单</p>
+                      <p className="text-xl font-black text-slate-900">总计金额: <span className="text-primary italic">￥{
+                        orders.filter(o => selectedOrders.includes(o.id)).reduce((sum, o) => sum + o.amount, 0).toFixed(2)
+                      }</span></p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={handleConfirmInvoice}
+                    className="px-10 py-4 bg-primary text-white rounded-2xl font-black shadow-xl shadow-primary/20 hover:scale-105 active:scale-95 transition-all text-sm tracking-tight"
+                  >
+                    确认提交申请
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>

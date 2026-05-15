@@ -696,14 +696,14 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, onEnterWorkbench, c
           </div>
 
           {/* Analysis History Section */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col mt-8">
-            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col mt-8 h-[580px]">
+            <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between shrink-0">
               <div className="flex items-center gap-2">
                 <Database className="text-primary" size={20} />
                 <h3 className="text-lg font-bold">解析历史记录</h3>
               </div>
             </div>
-            <div className="divide-y divide-slate-50">
+            <div className="divide-y divide-slate-50 flex-1 overflow-y-auto custom-scrollbar">
               {parsingHistory
                 .slice((historyPage - 1) * historyItemsPerPage, historyPage * historyItemsPerPage)
                 .map((item, idx) => (
@@ -746,7 +746,7 @@ const Dashboard: React.FC<DashboardProps> = ({ setActiveTab, onEnterWorkbench, c
                 ))}
             </div>
             {parsingHistory.length > historyItemsPerPage && (
-              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between">
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-between shrink-0">
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
                    第 {historyPage} 页 / 共 {Math.ceil(parsingHistory.length / historyItemsPerPage)} 页
                 </span>

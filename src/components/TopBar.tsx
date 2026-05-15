@@ -13,7 +13,7 @@ interface TopBarProps {
   profile?: { name: string; nickname: string; email: string; phone: string };
 }
 
-const TopBar: React.FC<TopBarProps> = ({ setActiveTab, enterprises, currentEnterprise, setCurrentEnterprise, onLogout, onAddEnterprise, profile }) => {
+const TopBar: React.FC<TopBarProps> = ({ setActiveTab, enterprises, currentEnterprise, setCurrentEnterprise, onLogout, onAddEnterprise, onRemoveEnterprise, profile }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const [showEntSelect, setShowEntSelect] = useState(false);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);

@@ -213,16 +213,75 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
           <div className="relative z-10">
             <div className="flex items-center gap-4 mb-14">
-              <div className="size-[56px] bg-[#0066FF] rounded-[16px] flex flex-col items-center justify-center shadow-lg shrink-0 relative overflow-hidden">
-                <div className="absolute top-[-4px] w-[120%] h-[36px]">
-                  <svg viewBox="0 0 100 50" className="w-full h-full">
-                    <path d="M-5 45 Q 50 0 105 45" fill="none" stroke="rgba(255,255,255,0.8)" strokeWidth="12" />
-                    <path d="M-5 55 Q 50 10 105 55" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="12" />
-                  </svg>
-                </div>
-                <div className="mt-6 z-10">
-                  <span className="text-white text-[10px] font-bold font-sans tracking-[0.05em]">BQPOINT</span>
-                </div>
+              <div className="size-[80px] bg-white rounded-[20px] flex items-center justify-center shadow-2xl shrink-0 overflow-hidden p-2 group">
+                <svg viewBox="0 0 100 100" className="w-full h-full">
+                  <defs>
+                    <linearGradient id="arch-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#BA0F30" />
+                      <stop offset="40%" stopColor="#003B8E" />
+                      <stop offset="100%" stopColor="#0090C5" />
+                    </linearGradient>
+                    <filter id="reflection" x="-20%" y="0%" width="140%" height="200%">
+                      <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+                      <feOffset dx="0" dy="5" result="offsetblur" />
+                      <feComponentTransfer>
+                        <feFuncA type="linear" slope="0.3" />
+                      </feComponentTransfer>
+                      <feMerge>
+                        <feMergeNode />
+                        <feMergeNode in="SourceGraphic" />
+                      </feMerge>
+                    </filter>
+                  </defs>
+                  
+                  {/* The Arch Design */}
+                  <g filter="url(#reflection)">
+                    {/* Segmented Arch */}
+                    <path 
+                      d="M10 52 Q 50 -12 90 52 L 82 52 Q 50 12 18 52 Z" 
+                      fill="url(#arch-grad)" 
+                    />
+                    {/* Highlights/Sweeps to create segments */}
+                    <path 
+                      d="M25 45 Q 50 15 75 45" 
+                      fill="none" 
+                      stroke="white" 
+                      strokeWidth="1.5" 
+                      strokeOpacity="0.4"
+                    />
+                    <path 
+                      d="M35 35 Q 50 20 65 35" 
+                      fill="none" 
+                      stroke="white" 
+                      strokeWidth="1" 
+                      strokeOpacity="0.2"
+                    />
+                  </g>
+
+                  {/* Text: 标桥 */}
+                  <text 
+                    x="50" 
+                    y="72" 
+                    textAnchor="middle" 
+                    fill="#003B8E" 
+                    className="text-[18px] font-bold"
+                    style={{ fontFamily: 'sans-serif' }}
+                  >
+                    标桥
+                  </text>
+                  
+                  {/* Text: BQPOINT */}
+                  <text 
+                    x="50" 
+                    y="88" 
+                    textAnchor="middle" 
+                    fill="#003B8E" 
+                    className="text-[14px] font-black tracking-tighter"
+                    style={{ fontFamily: 'sans-serif' }}
+                  >
+                    BQPOINT
+                  </text>
+                </svg>
               </div>
               <h1 className="text-[40px] font-extrabold text-white tracking-tight whitespace-nowrap">
                 投标协同管理平台
@@ -430,14 +489,6 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                               )}
                             </div>
                             <div className="flex items-center gap-4">
-                              {loginType === 'account' && selectionTab === 'personal' && (
-                                <button 
-                                  onClick={() => setView('register')}
-                                  className="text-sm text-primary font-bold hover:underline whitespace-nowrap"
-                                >
-                                  立即注册
-                                </button>
-                              )}
                               {loginType !== 'phone' && (
                                 <button 
                                   onClick={() => setView('forgot')}
@@ -466,7 +517,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                          onClick={handleInitialLogin}
                          className="w-full py-4 bg-primary text-white rounded-[16px] font-bold text-[18px] shadow-lg shadow-primary/25 hover:shadow-xl hover:bg-primary/90 active:scale-[0.98] transition-all relative overflow-hidden"
                        >
-                         {loginType === 'phone' && selectionTab === 'personal' ? '注册/登录' : '确认登录'}
+                         {selectionTab === 'personal' ? '注册/登录' : '确认登录'}
                        </button>
 
                       <div className="flex justify-end mt-4">
